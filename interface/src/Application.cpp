@@ -233,6 +233,14 @@
 #undef QT_BOOTSTRAPPED
 #endif
 
+//tensor
+//string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
+//string root_dir = "";
+// First we load and initialize the model.
+//std::unique_ptr<tensorflow::Session>  session5;
+graphAction * fred;// (graph, &session5);
+std::unique_ptr<tensorflow::Session>  session5;
+
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
 extern "C" {
@@ -4202,12 +4210,12 @@ void Application::idle() {
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f };
         
-        string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
-        string root_dir = "";
+        //string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
+        //string root_dir = "";
         // First we load and initialize the model.
-        std::unique_ptr<tensorflow::Session>  session5;
-        graphAction fred(graph, &session5);
-        float * answer = fred.getAnswer(&data_hifi[0], &session5);
+        //std::unique_ptr<tensorflow::Session>  session5;
+        //graphAction fred(graph, &session5);
+          float * answer = (*fred).getAnswer(&data_hifi[0], &session5);
         qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
 
 
@@ -4651,6 +4659,13 @@ void Application::init() {
             steamClient->joinLobby(lobbyId);
         }
     }
+
+    //tensor
+    string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
+    //string root_dir = "";
+    //First we load and initialize the model.
+    //std::unique_ptr<tensorflow::Session>  session5;
+    fred = new graphAction(graph, &session5);
 
 
     qCDebug(interfaceapp) << "Loaded settings";
