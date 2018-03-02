@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+//#define TENFI
+
 #include "Application.h"
 #include "tensorflowLibrary.h"
 
@@ -233,6 +235,8 @@
 #undef QT_BOOTSTRAPPED
 #endif
 
+#ifdef TENFI
+
 //tensor
 //string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
 //string root_dir = "";
@@ -240,6 +244,10 @@
 //std::unique_ptr<tensorflow::Session>  session5;
 graphAction * fred;// (graph, &session5);
 std::unique_ptr<tensorflow::Session>  session5;
+
+#endif // TENFI
+
+
 
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
@@ -4089,6 +4097,7 @@ void Application::idle() {
 
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
 
+#ifdef TENFI
     std::vector<float> data_hifi = { 0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
@@ -4209,18 +4218,10 @@ void Application::idle() {
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
         0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f };
-        
-        //string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
-        //string root_dir = "";
-        // First we load and initialize the model.
-        //std::unique_ptr<tensorflow::Session>  session5;
-        //graphAction fred(graph, &session5);
+
           float * answer = (*fred).getAnswer(&data_hifi[0], &session5);
         qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
-
-
-    //float * ret = fred.getAnswer((float*)&data_hifi);
-    //qCDebug(interfaceapp) << "tensor response is " << ret[0] << ret[1] << ret[2];
+#endif
 
     // These tasks need to be done on our first idle, because we don't want the showing of
     // overlay subwindows to do a showDesktop() until after the first time through
@@ -4659,13 +4660,14 @@ void Application::init() {
             steamClient->joinLobby(lobbyId);
         }
     }
-
+#ifdef TENFI
     //tensor
     string graph = "C:/machinelearning/unitytensor/ml-agents/unity-environment/Assets/my_time_series_model_headhands.bytes";
     //string root_dir = "";
     //First we load and initialize the model.
     //std::unique_ptr<tensorflow::Session>  session5;
     fred = new graphAction(graph, &session5);
+#endif
 
 
     qCDebug(interfaceapp) << "Loaded settings";

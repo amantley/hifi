@@ -14,9 +14,141 @@
 #include "Application.h"
 #include "InterfaceLogging.h"
 #include "AnimUtil.h"
+#include "tensorflowLibrary.h"
+
+#define USE_TENSORFLOW
+#ifdef USE_TENSORFLOW
+static graphAction * hipsPredictionGraph;
+std::unique_ptr<tensorflow::Session>  session6;
+#endif //tensorflow
 
 
 MySkeletonModel::MySkeletonModel(Avatar* owningAvatar, QObject* parent) : SkeletonModel(owningAvatar, parent) {
+
+#ifdef USE_TENSORFLOW
+    hipsPredictionGraph = new graphAction("C:/machinelearning/skcleandir/tempgraphs/my_time_series_model_headhands.bytes", &session6);
+    data_hifi = { 0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+                  0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,
+        0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f };
+
+#endif // USE_TENSORFLOW
 }
 
 Rig::CharacterControllerState convertCharacterControllerState(CharacterController::State state) {
@@ -34,6 +166,11 @@ Rig::CharacterControllerState convertCharacterControllerState(CharacterControlle
 }
 
 static AnimPose computeHipsInSensorFrame(MyAvatar* myAvatar, bool isFlying) {
+    /*
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6);
+    qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
+    */
+
     glm::mat4 worldToSensorMat = glm::inverse(myAvatar->getSensorToWorldMatrix());
 
     // check for pinned hips.
@@ -169,7 +306,79 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             params.secondaryControllerFlags[pair.second] = 0;
         }
     }
+#ifdef USE_TENSORFLOW
+    
+    if (myAvatar->getHMDLeanRecenterEnabled()) {
+        myAvatar->setHMDLeanRecenterEnabled(false);
+    }
 
+        auto avatarhead = myAvatar->getControllerPoseInAvatarFrame(controller::Action::HEAD);
+        auto avatarsensorhead = myAvatar->getControllerPoseInSensorFrame(controller::Action::HEAD);
+        glm::quat headYawOnly;
+    if (avatarhead.isValid()) {
+
+        glm::vec3 headpostensor_sensor = (avatarsensorhead.getTranslation())*Quaternions::Y_180;
+        glm::quat headrottensor = (Quaternions::Y_180)*(avatarsensorhead.getRotation());
+
+        //headYawOnly = cancelOutRollAndPitch(headrottensor);
+        headYawOnly = cancelOutRollAndPitch(headrottensor);
+
+        glm::vec3 headpos_scaled = glm::vec3(headpostensor_sensor.x / 1.68f, (1.5f + headpostensor_sensor.y) / 1.68f, headpostensor_sensor.z / 1.68f);
+
+
+        if (!_prevHeadValid) {
+            _prevHead = headpos_scaled;
+            _prevHeadValid = true;
+        }
+
+        //glm::vec3 headpostensor = avatarsensorhead.getTranslation();
+        qCDebug(interfaceapp) << "Sensor space head track values: " << headpostensor_sensor.x << " " << headpostensor_sensor.y << " " << headpostensor_sensor.z << endl;
+        qCDebug(interfaceapp) << "Scaled sensor head track values: " << headpos_scaled.x << " " << headpos_scaled.y << " " << headpos_scaled.z << endl;
+
+        for (int i = 0; i < 119; i++) {
+            for (int j = 0; j < 10; j++) {
+                //shift all the rows down in the input tensor.
+                data_hifi[j + (i * 10)] = data_hifi[j + ((i + 1) * 10)];
+            }
+        } 
+        data_hifi[(119 * 10) + 0] = headpos_scaled.x - _prevHead.x;
+        qCDebug(interfaceapp) << "xoffset " << (headpos_scaled.x - _prevHead.x) << endl;
+        data_hifi[(119 * 10) + 1] = (1 - headpos_scaled.y) / -.4f;
+        qCDebug(interfaceapp) << "yoffset " << ((1 - headpos_scaled.y) / -.4f) << endl;
+        data_hifi[(119 * 10) + 2] = headpos_scaled.z - _prevHead.z;
+        qCDebug(interfaceapp) << "zoffset " << (headpos_scaled.z - _prevHead.z) << endl;
+        if (headrottensor.w < 0.0f) {
+            headrottensor.x = -headrottensor.x;
+            headrottensor.y = -headrottensor.y;
+            headrottensor.z = -headrottensor.z;
+            headrottensor.w = -headrottensor.w;
+        }
+        data_hifi[(119 * 10) + 3] = headrottensor.x;
+        data_hifi[(119 * 10) + 4] = headrottensor.y;
+        data_hifi[(119 * 10) + 5] = headrottensor.z;
+        data_hifi[(119 * 10) + 6] = (1-headrottensor.w)/.3f;
+        data_hifi[(119 * 10) + 7] = _prevPredictionHips.x;
+        data_hifi[(119 * 10) + 8] = _prevPredictionHips.y;
+        data_hifi[(119 * 10) + 9] = _prevPredictionHips.z;
+        _prevHead = headpos_scaled;
+
+        qCDebug(interfaceapp) << "the rest of the input: " << headrottensor.x << " " <<headrottensor.y<< " "<< headrottensor.z << " "<< headrottensor.w << _prevPredictionHips.x << endl;
+
+        //then fill the last row of the input tensor with the latest reads and prediction
+    }
+    else
+    {
+        _prevHeadValid = false;
+    }
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6);
+    _prevPredictionHips = glm::vec3(answer[0], answer[1], answer[2]);
+    qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
+    if (_prevHeadValid) {
+        _predictedOffset = (glm::vec3(answer[0]*.4f, ((answer[1] * .4f) - .4f), answer[2] * .4f))*(Quaternions::Y_180);
+        qCDebug(interfaceapp) << "predicted hip offset: " << _predictedOffset.x << " " << _predictedOffset.y << " " << _predictedOffset.z << endl;
+
+    }
+#endif //end TENSOR_FLOW 
     // if hips are not under direct control, estimate the hips position.
     if (avatarHeadPose.isValid() && !(params.primaryControllerFlags[Rig::PrimaryControllerType_Hips] & (uint8_t)Rig::ControllerFlags::Enabled)) {
         bool isFlying = (myAvatar->getCharacterController()->getState() == CharacterController::State::Hover || myAvatar->getCharacterController()->computeCollisionGroup() == BULLET_COLLISION_GROUP_COLLISIONLESS);
@@ -180,12 +389,48 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         }
 
         AnimPose hips = computeHipsInSensorFrame(myAvatar, isFlying);
+#ifdef USE_TENSORFLOW
+        //first take the prediction from the model and rotate it back to sensor space
+        _predictedOffset.x = 0.0f;
+        float lengthoffset = _predictedOffset.length();
+        
+        //scale based on avatar torso length
+        const Rig& rig = getRig();
+        int headIndex = rig.indexOfJoint("Head");
+        int neckIndex = rig.indexOfJoint("Neck");
+        int hipsIndex = rig.indexOfJoint("Hips");
+
+        glm::vec3 rigHeadPos = headIndex != -1 ? rig.getAbsoluteDefaultPose(headIndex).trans() : DEFAULT_AVATAR_HEAD_POS;
+        glm::vec3 rigNeckPos = neckIndex != -1 ? rig.getAbsoluteDefaultPose(neckIndex).trans() : DEFAULT_AVATAR_NECK_POS;
+        glm::vec3 rigHipsPos = hipsIndex != -1 ? rig.getAbsoluteDefaultPose(hipsIndex).trans() : DEFAULT_AVATAR_HIPS_POS;
+
+        glm::vec3 localHead = (rigHeadPos - rigHipsPos);
+        glm::vec3 localNeck = (rigNeckPos - rigHipsPos);
+
+        glm::vec3 torso = localHead + localNeck;
+        float avatartorsolength = torso.length();
+        float scalepredictionratio = avatartorsolength/lengthoffset;
+        _predictedOffset = _predictedOffset*scalepredictionratio;
+
+        glm::quat ident;
+        //qCDebug(interfaceapp) << "compute Hips: " << hips.trans().x << " " << hips.trans().y << " " << hips.trans().z << endl;
+        glm::mat4 localhip = createMatFromQuatAndPos(ident, (avatarsensorhead.getTranslation() + _predictedOffset));
+        AnimPose ph = AnimPose(Quaternions::Y_180, extractTranslation(localhip));
+        //hips.trans() = ph.trans();// avatarsensorhead.getTranslation() + (_predictedOffset*1.68f);
+        qCDebug(interfaceapp) << "Predict Hips: " << _predictedOffset.x*1.68f << " " << _predictedOffset.y*1.68f << " " << _predictedOffset.z*1.68f << endl;
+        //float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
+        //_prevHips = ph;// avatarsensorhead.getTranslation() + (_predictedOffset*1.68f);
+        hips = ph;
+        _prevHips = ph;
+
+#endif // 
 
         // smootly lerp hips, in sensorframe, with different coeff for horiz and vertical translation.
         const float ROT_ALPHA = 0.9f;
         const float TRANS_HORIZ_ALPHA = 0.9f;
         const float TRANS_VERT_ALPHA = 0.1f;
         float hipsY = hips.trans().y;
+
         hips.trans() = lerp(hips.trans(), _prevHips.trans(), TRANS_HORIZ_ALPHA);
         hips.trans().y = lerp(hipsY, _prevHips.trans().y, TRANS_VERT_ALPHA);
         hips.rot() = safeLerp(hips.rot(), _prevHips.rot(), ROT_ALPHA);
@@ -195,13 +440,20 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 
         glm::mat4 invRigMat = glm::inverse(myAvatar->getTransform().getMatrix() * Matrices::Y_180);
         AnimPose sensorToRigPose(invRigMat * myAvatar->getSensorToWorldMatrix());
+        
+        AnimPose temp = sensorToRigPose * hips;
+        AnimPose temp2 = sensorToRigPose * ph;
+        qCDebug(interfaceapp) << "Final compute hip returned: " << hips.trans().x << " " <<hips.trans().y << " " << hips.trans().z;
+        qCDebug(interfaceapp) << "Final hip position rig space: " << temp.trans().x << " " << temp.trans().y << " " << temp.trans().z;
+        qCDebug(interfaceapp) << "Final predicted hip returned: " << ph.trans().x << " " << ph.trans().y << " " << ph.trans().z;
+        qCDebug(interfaceapp) << "Final predicted position rig space: " << temp2.trans().x << " " << temp2.trans().y << " " << temp2.trans().z;
 
         params.primaryControllerPoses[Rig::PrimaryControllerType_Hips] = sensorToRigPose * hips;
         params.primaryControllerFlags[Rig::PrimaryControllerType_Hips] = (uint8_t)Rig::ControllerFlags::Enabled | (uint8_t)Rig::ControllerFlags::Estimated;
 
     } else {
         _prevHipsValid = false;
-    }
+    } 
 
     params.isTalking = head->getTimeWithoutTalking() <= 1.5f;
 

@@ -1351,7 +1351,7 @@ void Rig::updateFeet(bool leftFootEnabled, bool rightFootEnabled, const AnimPose
     } else {
         _animVars.unset("leftFootPosition");
         _animVars.unset("leftFootRotation");
-        _animVars.set("leftFootType", (int)IKTarget::Type::RotationAndPosition);
+        _animVars.set("leftFootType", (int)IKTarget::Type::Unknown);
         _animVars.set("leftFootPoleVectorEnabled", false);
         _prevLeftFootPoleVectorValid = false;
     }
@@ -1382,7 +1382,7 @@ void Rig::updateFeet(bool leftFootEnabled, bool rightFootEnabled, const AnimPose
         _animVars.unset("rightFootPosition");
         _animVars.unset("rightFootRotation");
         _animVars.set("rightFootPoleVectorEnabled", false);
-        _animVars.set("rightFootType", (int)IKTarget::Type::RotationAndPosition);
+        _animVars.set("rightFootType", (int)IKTarget::Type::Unknown);
     }
 }
 

@@ -27,7 +27,14 @@ private:
     void updateFingers();
 
     AnimPose _prevHips;  // sensor frame
+
+    glm::vec3 _prevHead; 
+    std::vector<float> data_hifi;
+    glm::vec3 _prevPredictionHips;
+    glm::vec3 _predictedOffset;
+
     bool _prevHipsValid { false };
+    bool _prevHeadValid{ false };
 
     std::map<int, int> _jointRotationFrameOffsetMap;
 };
