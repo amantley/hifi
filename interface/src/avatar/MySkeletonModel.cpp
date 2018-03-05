@@ -370,7 +370,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     {
         _prevHeadValid = false;
     }
-    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6);
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6,10,3);
     _prevPredictionHips = glm::vec3(answer[0], answer[1], answer[2]);
     qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
     if (_prevHeadValid) {
