@@ -409,7 +409,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 
         glm::vec3 torso = localHead + localNeck;
         float avatartorsolength = torso.length();
-        float scalepredictionratio = avatartorsolength/lengthoffset;
+        float scalepredictionratio = (avatartorsolength/lengthoffset)*1.15f;
         _predictedOffset = _predictedOffset*scalepredictionratio;
 
         glm::quat ident;
@@ -442,13 +442,18 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         AnimPose sensorToRigPose(invRigMat * myAvatar->getSensorToWorldMatrix());
         
         AnimPose temp = sensorToRigPose * hips;
+		
+#ifdef USE_TENSORFLOW
+        temp.trans().z = temp.trans().z + .15f;
         AnimPose temp2 = sensorToRigPose * ph;
-        qCDebug(interfaceapp) << "Final compute hip returned: " << hips.trans().x << " " <<hips.trans().y << " " << hips.trans().z;
-        qCDebug(interfaceapp) << "Final hip position rig space: " << temp.trans().x << " " << temp.trans().y << " " << temp.trans().z;
-        qCDebug(interfaceapp) << "Final predicted hip returned: " << ph.trans().x << " " << ph.trans().y << " " << ph.trans().z;
+		qCDebug(interfaceapp) << "Final predicted hip returned: " << ph.trans().x << " " << ph.trans().y << " " << ph.trans().z;
         qCDebug(interfaceapp) << "Final predicted position rig space: " << temp2.trans().x << " " << temp2.trans().y << " " << temp2.trans().z;
 
-        params.primaryControllerPoses[Rig::PrimaryControllerType_Hips] = sensorToRigPose * hips;
+#endif
+        qCDebug(interfaceapp) << "Final compute hip returned: " << hips.trans().x << " " <<hips.trans().y << " " << hips.trans().z;
+        qCDebug(interfaceapp) << "Final hip position rig space: " << temp.trans().x << " " << temp.trans().y << " " << temp.trans().z;
+
+        params.primaryControllerPoses[Rig::PrimaryControllerType_Hips] =  temp;
         params.primaryControllerFlags[Rig::PrimaryControllerType_Hips] = (uint8_t)Rig::ControllerFlags::Enabled | (uint8_t)Rig::ControllerFlags::Estimated;
 
     } else {
