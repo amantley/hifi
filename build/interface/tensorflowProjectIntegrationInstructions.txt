@@ -1,0 +1,52 @@
+This file has additions for the interface project settings in visual studio to integrate tensorflow
+
+The tensorflow functions in interface are accessed through tensorflowLibrary which will also have a repo on git.
+
+tensorflowLibrary.h is currently included in mySkeletonModel.cpp
+
+Linker library files to add: 
+
+tensorflowLibrary.lib;
+Release\tf_protos_cc.lib;
+gif\install\lib\giflib.lib;
+png\install\lib\libpng12_static.lib;
+jpeg\install\lib\libjpeg.lib;
+lmdb\install\lib\lmdb.lib;
+jsoncpp\src\jsoncpp\src\lib_json\$(Configuration)\jsoncpp.lib;
+farmhash\install\lib\farmhash.lib;
+fft2d\\src\lib\fft2d.lib;
+highwayhash\install\lib\highwayhash.lib;
+nsync\install\lib\nsync.lib;
+protobuf\src\protobuf\$(Configuration)\libprotobuf.lib;
+re2\src\re2\$(Configuration)\re2.lib;
+sqlite\install\lib\sqlite.lib;
+zlib\install\lib\zlibstatic.lib;
+grpc\src\grpc\Release\grpc++_unsecure.lib;
+grpc\src\grpc\Release\grpc_unsecure.lib;
+grpc\src\grpc\Release\gpr.lib;
+snappy\src\snappy\$(Configuration)\snappy.lib;
+/WHOLEARCHIVE:tf_cc.lib;
+/WHOLEARCHIVE:tf_cc_ops.lib;
+/WHOLEARCHIVE:tf_cc_framework.lib;
+/WHOLEARCHIVE:tf_core_cpu.lib;
+/WHOLEARCHIVE:tf_core_direct_session.lib;
+/WHOLEARCHIVE:tf_core_framework.lib;
+/WHOLEARCHIVE:tf_core_kernels.lib;
+/WHOLEARCHIVE:tf_core_lib.lib;
+/WHOLEARCHIVE:tf_core_ops.lib;
+/WHOLEARCHIVE:tf_cc_while_loop.lib;
+/machine:x64;
+/ignore:4049;
+
+Linker library directories to add:
+
+C:\angus\tensorflowLibrary\x64\Release;C:\tensorflow\tensorflow\tensorflow\tensorflow\contrib\cmake\build\protobuf\src\protobuf\Release;C:\tensorflow\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_cc.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_cc_ops.dir\ReleaeC:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_cc_framework.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_cpu.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_direct_session.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_framework.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_kernels.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_lib.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\tf_core_ops.dir\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\Release;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build
+
+
+c++ preprocessor additions:
+
+COMPILER_MSVC;_ITERATOR_DEBUG_LEVEL=0;SQLITE_OMIT_LOAD_EXTENSION;EIGEN_AVOID_STL_ARRAY;TENSORFLOW_USE_EIGEN_THREADPOOL;EIGEN_HAS_C99_MATH;TF_COMPILE_LIBRARY;GRPC_ARES=0;TF_USE_SNAPPY;;
+
+c++ include directories to add:
+
+C:\angus\tensorflowLibrary\tensorflowLibrary;C:\tensorflow\tensorflow;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\zlib_archive;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\gif_archive\giflib-5.1.4;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\png_archive;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\jpeg_archive;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\lmdb;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\eigen_archive;C:\tensorflow\tensorflow\third_party\eigen3;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\gemmlowp\src\gemmlowp;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\jsoncpp\src\jsoncpp;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\farmhash_archive;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\farmhash_archive\util;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\highwayhash;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\cub\src\cub;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\nsync\public;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\protobuf\src\protobuf\src;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\re2\install\include;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\external\sqlite;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\grpc\src\grpc\include;C:\tensorflow\tensorflow\tensorflow\contrib\cmake\build\snappy\src\snappy;
