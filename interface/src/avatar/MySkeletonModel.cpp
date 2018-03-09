@@ -17,6 +17,7 @@
 #include "tensorflowLibrary.h"
 
 #define USE_TENSORFLOW
+
 #ifdef USE_TENSORFLOW
 static graphAction * hipsPredictionGraph;
 std::unique_ptr<tensorflow::Session>  session6;
@@ -306,19 +307,30 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             params.secondaryControllerFlags[pair.second] = 0;
         }
     }
+    
 #ifdef USE_TENSORFLOW
     
     if (myAvatar->getHMDLeanRecenterEnabled()) {
         myAvatar->setHMDLeanRecenterEnabled(false);
     }
 
-        auto avatarhead = myAvatar->getControllerPoseInAvatarFrame(controller::Action::HEAD);
-        auto avatarsensorhead = myAvatar->getControllerPoseInSensorFrame(controller::Action::HEAD);
-        glm::quat headYawOnly;
+    auto avatarhead = myAvatar->getControllerPoseInAvatarFrame(controller::Action::HEAD);
+    auto avatarsensorhead = myAvatar->getControllerPoseInSensorFrame(controller::Action::HEAD);
+    AnimPose hipsSpace = computeHipsInSensorFrame(myAvatar, false);
+    qCDebug(interfaceapp) << "hips in sensor Frame " << hipsSpace.rot().x << " " << hipsSpace.rot().y << " " << hipsSpace.rot().z << " " << hipsSpace.rot().w << endl;
+    qCDebug(interfaceapp) << "head in sensor Frame " << avatarsensorhead.getRotation().x << " " << avatarsensorhead.getRotation().y << " " << avatarsensorhead.getRotation().z << " " << avatarsensorhead.getRotation().w << endl;
+     
+    glm::quat hipsSpaceRot = (Quaternions::Y_180)*hipsSpace.rot();
+
+    glm::quat headYawOnly;
+    qCDebug(interfaceapp) << "head track values in sensor space: " << avatarsensorhead.getTranslation().x << " " << avatarsensorhead.getTranslation().y << " " << avatarsensorhead.getTranslation().z << endl;
+    qCDebug(interfaceapp) << "head track values in avatar space: " << avatarhead.getTranslation().x << " " << avatarhead.getTranslation().y << " " << avatarhead.getTranslation().z << endl;
+
     if (avatarhead.isValid()) {
 
-        glm::vec3 headpostensor_sensor = (avatarsensorhead.getTranslation())*Quaternions::Y_180;
-        glm::quat headrottensor = (Quaternions::Y_180)*(avatarsensorhead.getRotation());
+        
+        glm::vec3 headpostensor_sensor = ((Quaternions::Y_180)*avatarsensorhead.getTranslation())*hipsSpaceRot;
+        glm::quat headrottensor = glm::inverse(hipsSpaceRot)*(Quaternions::Y_180)*(avatarsensorhead.getRotation());
 
         //headYawOnly = cancelOutRollAndPitch(headrottensor);
         headYawOnly = cancelOutRollAndPitch(headrottensor);
@@ -332,7 +344,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         }
 
         //glm::vec3 headpostensor = avatarsensorhead.getTranslation();
-        qCDebug(interfaceapp) << "Sensor space head track values: " << headpostensor_sensor.x << " " << headpostensor_sensor.y << " " << headpostensor_sensor.z << endl;
+        qCDebug(interfaceapp) << "head track values in hips space: " << headpostensor_sensor.x << " " << headpostensor_sensor.y << " " << headpostensor_sensor.z << endl;
         qCDebug(interfaceapp) << "Scaled sensor head track values: " << headpos_scaled.x << " " << headpos_scaled.y << " " << headpos_scaled.z << endl;
 
         for (int i = 0; i < 119; i++) {
@@ -370,13 +382,21 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     {
         _prevHeadValid = false;
     }
+
+    uint start = GetTickCount();
     float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6,10,3);
+    uint timeItTook = GetTickCount() - start;
+    qCDebug(interfaceapp) << "The time it took for tensorflow: " << timeItTook << endl;
+
+    float scale_x = ((((answer[1] * .4f) - .4f) +.44f)/.44)*(.1f);
+    
+
     _prevPredictionHips = glm::vec3(answer[0], answer[1], answer[2]);
     qCDebug(interfaceapp) << "return value: " << answer[0] << " " << answer[1] << " " << answer[2] << endl;
     if (_prevHeadValid) {
-        _predictedOffset = (glm::vec3(answer[0]*.4f, ((answer[1] * .4f) - .4f), answer[2] * .4f))*(Quaternions::Y_180);
+        // we get rid of X value here. due to my capture bias.
+        _predictedOffset = (Quaternions::Y_180)*(glm::vec3(answer[0]*.4f+scale_x, ((answer[1] * .4f) - .4f), (answer[2] * .4f)+.10f))*(glm::inverse(hipsSpaceRot));
         qCDebug(interfaceapp) << "predicted hip offset: " << _predictedOffset.x << " " << _predictedOffset.y << " " << _predictedOffset.z << endl;
-
     }
 #endif //end TENSOR_FLOW 
     // if hips are not under direct control, estimate the hips position.
@@ -391,8 +411,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         AnimPose hips = computeHipsInSensorFrame(myAvatar, isFlying);
 #ifdef USE_TENSORFLOW
         //first take the prediction from the model and rotate it back to sensor space
-        _predictedOffset.x = 0.0f;
-        float lengthoffset = _predictedOffset.length();
+        
         
         //scale based on avatar torso length
         const Rig& rig = getRig();
@@ -409,13 +428,19 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 
         glm::vec3 torso = localHead + localNeck;
         float avatartorsolength = torso.length();
+        float lengthoffset = _predictedOffset.length();
+
         float scalepredictionratio = (avatartorsolength/lengthoffset)*1.15f;
+        qCDebug(interfaceapp) << "scale prediction ratio: " << scalepredictionratio << endl;
         _predictedOffset = _predictedOffset*scalepredictionratio;
+        //put predictedoffset back in sensor space
+        //_predictedOffset = glm::inverse(hipsSpaceRot)*_predictedOffset;
 
         glm::quat ident;
         //qCDebug(interfaceapp) << "compute Hips: " << hips.trans().x << " " << hips.trans().y << " " << hips.trans().z << endl;
-        glm::mat4 localhip = createMatFromQuatAndPos(ident, (avatarsensorhead.getTranslation() + _predictedOffset));
-        AnimPose ph = AnimPose(Quaternions::Y_180, extractTranslation(localhip));
+        glm::mat4 globalhip = createMatFromQuatAndPos(ident, (avatarsensorhead.getTranslation() + _predictedOffset));
+        glm::vec3 localhip = hipsSpaceRot*extractTranslation(globalhip);
+        AnimPose ph = AnimPose(hipsSpace.rot(), (avatarsensorhead.getTranslation() + _predictedOffset));
         //hips.trans() = ph.trans();// avatarsensorhead.getTranslation() + (_predictedOffset*1.68f);
         qCDebug(interfaceapp) << "Predict Hips: " << _predictedOffset.x*1.68f << " " << _predictedOffset.y*1.68f << " " << _predictedOffset.z*1.68f << endl;
         //float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
@@ -444,7 +469,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         AnimPose temp = sensorToRigPose * hips;
 		
 #ifdef USE_TENSORFLOW
-        temp.trans().z = temp.trans().z + .15f;
+        temp.trans().z = temp.trans().z;// +.15f;
         AnimPose temp2 = sensorToRigPose * ph;
 		qCDebug(interfaceapp) << "Final predicted hip returned: " << ph.trans().x << " " << ph.trans().y << " " << ph.trans().z;
         qCDebug(interfaceapp) << "Final predicted position rig space: " << temp2.trans().x << " " << temp2.trans().y << " " << temp2.trans().z;
