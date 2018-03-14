@@ -2795,11 +2795,11 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     glm::vec3 neckToRoot = headOrientationYawOnly  * Quaternions::Y_180 * -localNeck;
 
     float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
-    qCDebug(interfaceapp) << "my height to avatar height ratio: " << invSensorToWorldScale << " " << getEyeHeight()<<endl;
+    //qCDebug(interfaceapp) << "my height to avatar height ratio: " << invSensorToWorldScale << " " << getEyeHeight()<<endl;
     glm::vec3 bodyPos = headPosition + invSensorToWorldScale * (headToNeck + neckToRoot);
 
     glm::vec3 hipoffset = invSensorToWorldScale * (headToNeck + neckToRoot);
-    qCDebug(interfaceapp) << "compute Hips offset: " << hipoffset.x << " " << hipoffset.y << " " << hipoffset.z << endl;
+    //qCDebug(interfaceapp) << "compute Hips offset: " << hipoffset.x << " " << hipoffset.y << " " << hipoffset.z << endl;
 
     return createMatFromQuatAndPos(headOrientationYawOnly, bodyPos);
 }
