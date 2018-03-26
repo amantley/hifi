@@ -37,6 +37,14 @@ private:
     bool _prevHipsValid { false };
     bool _prevHeadValid{ false };
 
+    glm::quat _lastFrameHeadRot;
+    glm::quat _lastFrameRHandRot;
+    glm::quat _lastFrameLHandRot;
+
+    AnimPose _azimuth;
+    int _X_input_length;
+    int _Y_output_length;
+
     std::map<int, int> _jointRotationFrameOffsetMap;
 };
 
