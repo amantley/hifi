@@ -17,20 +17,83 @@
 #include "tensorflowLibrary.h"
 
 #define USE_TENSORFLOW
+//#define AZIMUTH
+#define POSITION_MODEL
 
 #ifdef USE_TENSORFLOW
 static graphAction * hipsPredictionGraph;
 std::unique_ptr<tensorflow::Session>  session6;
+float outputfilter[10][3];
 #endif //tensorflow
 
 
 MySkeletonModel::MySkeletonModel(Avatar* owningAvatar, QObject* parent) : SkeletonModel(owningAvatar, parent) {
 
 #ifdef USE_TENSORFLOW
+    
+#ifdef POSITION_MODEL
     //hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_1600.bytes", &session6);
     //hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_combo_330.bytes", &session6);
-    hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_normhead_azimuth_abs.bytes", &session6);
-    
+    hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_combo_99k.bytes", &session6);
+    data_hifi = { 0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f,  
+        0.0f,0.0f,0.0f,0.0f,0.0f };
+    _X_input_length = 5;
+    _Y_output_length = 3;
+
+#endif
+
+
+
+#ifdef AZIMUTH
+    hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_normhead_azimuth.bytes", &session6);
     data_hifi = { 0.0f,0.0f,0.0f,
                   0.0f,0.0f,0.0f,     
                   0.0f,0.0f,0.0f,  
@@ -80,11 +143,12 @@ MySkeletonModel::MySkeletonModel(Avatar* owningAvatar, QObject* parent) : Skelet
                   0.0f,0.0f,0.0f,  
                   0.0f,0.0f,0.0f,  
                   0.0f,0.0f,0.0f,  
-                  0.0f,0.0f,0.0f, };
+                  0.0f,0.0f,0.0f };
 
                   _azimuth.rot() = Quaternions::Y_180;
                   _X_input_length = 3;
                   _Y_output_length = 1;
+#endif // AZIMUTH
 
 #endif // USE_TENSORFLOW
 }
@@ -269,6 +333,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     //we don't need the 180 here but that is a holdover from the leaning training.
     //this has to change back for the leaning model. headrotation should be global for that.
     glm::quat headrottensor = glm::inverse(_lastFrameHeadRot)*((Quaternions::Y_180)*(avatarsensorhead.getRotation()));
+    glm::quat absheadrottensor = ((Quaternions::Y_180)*(avatarsensorhead.getRotation()));
     glm::quat rhandrottensor = glm::inverse(_lastFrameRHandRot)*(Quaternions::Y_180)*(avatarsensorrhand.getRotation());
     glm::quat lhandrottensor = glm::inverse(_lastFrameLHandRot)*(Quaternions::Y_180)*(avatarsensorlhand.getRotation());
     _lastFrameHeadRot = (Quaternions::Y_180)*(avatarsensorhead.getRotation());
@@ -278,16 +343,18 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     //glm::vec3 headoffset = headpostensor_sensor - _previousHipPos;
     //remember this has to be changed back for the head rotation in the leaning model.
     glm::quat headYawOnly = cancelOutRollAndPitch(headrottensor);
+    glm::quat absHeadYawOnly = cancelOutRollAndPitch(absheadrottensor);
     glm::quat rhandYawOnly = cancelOutRollAndPitch(rhandrottensor);
     glm::quat lhandYawOnly = cancelOutRollAndPitch(lhandrottensor);
 
-    //glm::vec3 headpos_scaled = glm::vec3(headpostensor_sensor.x / 1.68f, (1.5f + headpostensor_sensor.y) / 1.68f, headpostensor_sensor.z / 1.68f);
-    glm::vec3 headpos_scaled = glm::vec3(headpostensor_sensor.x , (1.5f + headpostensor_sensor.y) , headpostensor_sensor.z );
+    glm::vec3 headpos_scaled = glm::vec3(headpostensor_sensor.x / 1.68f, (1.5f + headpostensor_sensor.y) / 1.68f, headpostensor_sensor.z / 1.68f);
+    //glm::vec3 headpos_scaled = glm::vec3(headpostensor_sensor.x , (1.5f + headpostensor_sensor.y) , headpostensor_sensor.z );
 
     if (avatarhead.isValid()) {
 
         //find the acos of the up head up vector and the world up vector.
-        glm::mat4 mat = createMatFromQuatAndPos(headrottensor, glm::vec3(0.0f, 0.0f, 0.0f));
+        glm::mat4 mat = createMatFromQuatAndPos(absheadrottensor, glm::vec3(0.0f, 0.0f, 0.0f));
+        glm::mat4 absmat = createMatFromQuatAndPos(absHeadYawOnly, glm::vec3(0.0f, 0.0f, 0.0f));
         glm::mat4 rhmatyawonly = createMatFromQuatAndPos(rhandYawOnly, glm::vec3(0.0f, 0.0f, 0.0f));
         glm::mat4 lhmatyawonly = createMatFromQuatAndPos(lhandYawOnly, glm::vec3(0.0f, 0.0f, 0.0f));
         glm::mat4 matyawonly = createMatFromQuatAndPos(headYawOnly, glm::vec3(0.0f, 0.0f, 0.0f));
@@ -295,6 +362,8 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         glm::vec3 worldup(0.0f, 1.0f, 0.0f);
         glm::vec3 worldright(1.0f, 0.0f, 0.0f);
         glm::vec3 worldlookat(0.0f, 0.0f, 1.0f);
+        glm::vec3 absup = transformPoint(mat, worldup);
+        glm::vec3 abslookat = transformPoint(absmat, worldlookat);
         glm::vec3 up = transformPoint(mat, worldup);
         glm::vec3 lookat = transformPoint(matyawonly, worldlookat);
         glm::vec3 rhlookat = transformPoint(rhmatyawonly, worldlookat);
@@ -303,6 +372,8 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 
         float anglelean = 1 - (up.x*worldup.x + up.y*worldup.y + up.z*worldup.z);
         float angleyaw = (lookat.x*worldright.x + lookat.y*worldright.y + lookat.z*worldright.z);
+        float absanglelean = 1 - (absup.x*worldup.x + absup.y*worldup.y + absup.z*worldup.z);
+        float absangleyaw = (abslookat.x*worldright.x + abslookat.y*worldright.y + abslookat.z*worldright.z);
 
         if (!_prevHeadValid) {
             _prevHead = headpos_scaled;
@@ -321,6 +392,9 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
                 data_hifi[j + (i * _X_input_length)] = data_hifi[j + ((i + 1) * _X_input_length)];
             }
         } 
+        
+
+#ifdef AZIMUTH
         if (_prevHipsValid) {
             data_hifi[(49 * _X_input_length) + 0] = (atan2(lookat.z, lookat.x)/PI)-0.5f;// headpos_scaled.x - _prevHead.x ;
            // qCDebug(interfaceapp) << "xoffset " << (headpos_scaled.x - _prevHead.x)  << endl;
@@ -335,37 +409,95 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             data_hifi[(49 * _X_input_length) + 0] = 0.0f;
             data_hifi[(49 * _X_input_length) + 1] = 0.0f;
             data_hifi[(49 * _X_input_length) + 2] = 0.0f;
-           // data_hifi[(49 * _X_input_length) + 3] = 0.0f;// anglelean;
-           // data_hifi[(49 * _X_input_length) + 4] = 0.0f;// anglelean;
+            // data_hifi[(49 * _X_input_length) + 3] = 0.0f;// anglelean;
+            // data_hifi[(49 * _X_input_length) + 4] = 0.0f;// anglelean;
         }
-        
-        _prevHead = headpos_scaled;
+#endif
 
-        qCDebug(interfaceapp) << "anglelean: " << anglelean << endl;
+#ifdef POSITION_MODEL
+        if (_prevHipsValid) {
+            data_hifi[(49 * _X_input_length) + 0] = headpos_scaled.x - _prevHead.x;// headpos_scaled.x - _prevHead.x ;
+            //qCDebug(interfaceapp) << "xoffset " << (headpos_scaled.x - _prevHead.x)  << endl;
+            data_hifi[(49 * _X_input_length) + 1] = headpos_scaled.y - _prevHead.y; //headpos_scaled.y - _prevHead.y;
+            //qCDebug(interfaceapp) << "yoffset " << (headpos_scaled.y - _prevHead.y) << endl;
+            data_hifi[(49 * _X_input_length) + 2] = headpos_scaled.z - _prevHead.z; //headpos_scaled.z -_prevHead.z;
+            //qCDebug(interfaceapp) << "zoffset " << headpos_scaled.z - _prevHead.z  << endl;
+            data_hifi[(49 * _X_input_length) + 3] = absanglelean;
+            data_hifi[(49 * _X_input_length) + 4] = absangleyaw;
+        }
+        else {
+            data_hifi[(49 * _X_input_length) + 0] = 0.0f;
+            data_hifi[(49 * _X_input_length) + 1] = 0.0f;
+            data_hifi[(49 * _X_input_length) + 2] = 0.0f;
+            data_hifi[(49 * _X_input_length) + 3] = 0.0f;
+            data_hifi[(49 * _X_input_length) + 4] = 0.0f;
+        }
+        _prevHead = headpos_scaled;
+        qCDebug(interfaceapp) << "anglelean: " << absanglelean << endl;
+        qCDebug(interfaceapp) << "angleyaw: " << absangleyaw << endl;
+#endif
+
     }
     else
     {
         _prevHeadValid = false;
     }
 
+#ifdef AZIMUTH
+    //now we are ready to do the inferencing, ie get the current model output for the current input tensor.
     uint start = GetTickCount();
-    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6, _X_input_length,_Y_output_length,50,"fred");
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6, _X_input_length, _Y_output_length, 50, "fred","state");
     uint timeItTook = GetTickCount() - start;
     qCDebug(interfaceapp) << "The time it took for tensorflow: " << timeItTook << endl;
 
-    
+    qCDebug(interfaceapp) << "return value: " << answer[0] << endl;
+   
+#endif //azimuth
 
-    //float scale_x = ((((answer[1] * .4f) - .4f) +.44f)/.44)*(.1f);
-    
+#ifdef POSITION_MODEL
+    //now we are ready to do the inferencing, ie get the current model output for the current input tensor.
+    uint start = GetTickCount();
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6, _X_input_length,_Y_output_length,50,"rnn/transpose","xdrop");
+    uint timeItTook = GetTickCount() - start;
 
+    //filter here
+    float sumx = 0.0f;
+    float sumy = 0.0f;
+    float sumz = 0.0f;
+    for (int p = 0; p < 9; p++)
+    {
+        sumx += outputfilter[p+1][0];
+        outputfilter[p][0] = outputfilter[p + 1][0];
+        sumy += outputfilter[p+1][1];
+        outputfilter[p][1] = outputfilter[p + 1][1];
+        sumz += outputfilter[p+1][2];
+        outputfilter[p][2] = outputfilter[p + 1][2];
+
+    }
+    answer[0] = (answer[0] + sumx) / 10.0f;
+    answer[1] = (answer[1] + sumy) / 10.0f;
+    answer[2] = (answer[2] + sumz) / 10.0f;
+    
+    outputfilter[9][0] = answer[0];
+    outputfilter[9][1] = answer[1];
+    outputfilter[9][2] = answer[2];
+
+
+
+
+
+    qCDebug(interfaceapp) << "The time it took for tensorflow: " << timeItTook << endl;
     //_prevPredictionHips = glm::vec3(answer[0], answer[1], answer[2]);
-    qCDebug(interfaceapp) << "return value: " << answer[0] << endl;// << " " << answer[1] << " " << answer[2] << endl;
+    qCDebug(interfaceapp) << "return values: " << answer[0]  << " " << answer[1] << " " << answer[2] << endl;
     if (_prevHeadValid) {
         // we get rid of X value here. due to my capture bias.
-        //_predictedOffset = (Quaternions::Y_180)*(glm::vec3(answer[0], answer[1], answer[2]));
-        //qCDebug(interfaceapp) << "predicted hip offset unscaled: " << _predictedOffset.x << " " << _predictedOffset.y << " " << _predictedOffset.z << endl;
+        _predictedOffset = (Quaternions::Y_180)*(glm::vec3(answer[0], answer[1], answer[2]));
+        qCDebug(interfaceapp) << "predicted hip offset unscaled: " << _predictedOffset.x << " " << _predictedOffset.y << " " << _predictedOffset.z << endl;
     }
+#endif //position_model
 #endif //end TENSOR_FLOW 
+
+
     // if hips are not under direct control, estimate the hips position.
     if (avatarHeadPose.isValid() && !(params.primaryControllerFlags[Rig::PrimaryControllerType_Hips] & (uint8_t)Rig::ControllerFlags::Enabled)) {
         bool isFlying = (myAvatar->getCharacterController()->getState() == CharacterController::State::Hover || myAvatar->getCharacterController()->computeCollisionGroup() == BULLET_COLLISION_GROUP_COLLISIONLESS);
@@ -379,22 +511,8 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         
 
 #ifdef USE_TENSORFLOW
-        //this part is to deal with the rotation model.
-        float scaled_ans = (-1.0f)*(answer[0])*PI;
-        glm::vec3 up = { 0.0f,1.0f,0.0f };
-        //check radians or degrees here.
-        glm::quat localrotation = glm::angleAxis(scaled_ans, up);
-        _azimuth.rot() = _azimuth.rot()*localrotation;// (glm::inverse(localrotation));
-        qCDebug(interfaceapp) << "scaled answer" << scaled_ans << " " << answer[0] << endl;
-        qCDebug(interfaceapp) << "azimuth output" << localrotation << endl;
-        qCDebug(interfaceapp) << "azimuth final " << _azimuth.rot() << endl;
-        qCDebug(interfaceapp) << "atan2 " << atan2(.866f,.5f) << endl;
-
-        
-
+#ifdef POSITION_MODEL
         //first take the prediction from the model and rotate it back to sensor space
-        
-        
         //scale based on avatar torso length
         const Rig& rig = getRig();
         int headIndex = rig.indexOfJoint("Head");
@@ -413,7 +531,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         float lengthoffset = _predictedOffset.length();
 
         float scalepredictionratio = (avatartorsolength/lengthoffset);
-        qCDebug(interfaceapp) << "scale prediction ratio: " << scalepredictionratio << endl;
+        //qCDebug(interfaceapp) << "scale prediction ratio: " << scalepredictionratio << endl;
         //save the unscaled offset for our model inputs.
         glm::vec3 unscaledOffset = _predictedOffset;
         //here is where we reinflate the scale dependent on the user's height
@@ -427,21 +545,40 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         glm::vec3 localhip = extractTranslation(globalhip);
         //localhip = headpos_scaled + glm::vec3(answer[0], answer[1], answer[2]);
             //localhip.y += 1.2f;
-        glm::vec3 scaledbackvec;// = (_predictedOffset / (float)(_predictedOffset.length()))*avatartorsolength;
-        AnimPose ph = AnimPose(Quaternions::Y_180, (avatarsensorhead.getTranslation() + scaledbackvec));
+        glm::vec3 scaledbackvec = (_predictedOffset / (float)(_predictedOffset.length()))*avatartorsolength;
+        AnimPose ph = AnimPose(Quaternions::Y_180, (avatarsensorhead.getTranslation() + _predictedOffset));
 
-        _previousHipPos = headpos_scaled;// +glm::vec3(answer[0], answer[1], answer[2]);
-        qCDebug(interfaceapp) << "Previous Hips: " << _previousHipPos.x << " " << _previousHipPos.y << " " << _previousHipPos.z << endl;
+        _previousHipPos = headpos_scaled + glm::vec3(answer[0], answer[1], answer[2]);
+        //qCDebug(interfaceapp) << "Previous Hips: " << _previousHipPos.x << " " << _previousHipPos.y << " " << _previousHipPos.z << endl;
         //qCDebug(interfaceapp) << "Predict Hips: " << _predictedOffset.x*1.68f << " " << _predictedOffset.y*1.68f << " " << _predictedOffset.z*1.68f << endl;
         //float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
         //_prevHips = ph;// avatarsensorhead.getTranslation() + (_predictedOffset*1.68f);
-        //hips = ph;
+        hips = ph;
+        _prevHips = hips;
+
+#endif //position_model
+
+#ifdef AZIMUTH
+        //this part is to deal with the rotation model.
+        float scaled_ans = (-1.0f)*(answer[0])*PI;
+        glm::vec3 up = { 0.0f,1.0f,0.0f };
+        //check radians or degrees here.
+        glm::quat localrotation = glm::angleAxis(scaled_ans, up);
+        _azimuth.rot() = _azimuth.rot()*localrotation;// (glm::inverse(localrotation));
+        qCDebug(interfaceapp) << "scaled answer" << scaled_ans << " " << answer[0] << endl;
+        qCDebug(interfaceapp) << "azimuth output" << localrotation << endl;
+        qCDebug(interfaceapp) << "azimuth final " << _azimuth.rot() << endl;
+        qCDebug(interfaceapp) << "atan2 " << atan2(.866f, .5f) << endl;
+
         //this hack works when facing forwards.
         //if (abs(_azimuth.rot().y) < abs(hips.rot().y)) {
         hips.rot() = _azimuth.rot();
         //}
         //hips.rot() = Quaternions::Y_180;
         _prevHips = hips;
+
+
+#endif //azimuth
 
 #endif // 
 
@@ -464,11 +601,12 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         AnimPose temp = sensorToRigPose * hips;
 		
 #ifdef USE_TENSORFLOW
+#ifdef POSITION_MODEL
         temp.trans().z = temp.trans().z;// +.15f;
         AnimPose temp2 = sensorToRigPose * ph;
 		qCDebug(interfaceapp) << "Final predicted hip returned: " << ph.trans().x << " " << ph.trans().y << " " << ph.trans().z;
         qCDebug(interfaceapp) << "Final predicted position rig space: " << temp2.trans().x << " " << temp2.trans().y << " " << temp2.trans().z;
-
+#endif //POSITION_MODEL
 #endif
         qCDebug(interfaceapp) << "Final compute hip returned: " << hips.trans().x << " " <<hips.trans().y << " " << hips.trans().z;
         qCDebug(interfaceapp) << "Final hip position rig space: " << temp.trans().x << " " << temp.trans().y << " " << temp.trans().z;
