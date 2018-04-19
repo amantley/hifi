@@ -1584,7 +1584,7 @@ void Rig::updateFromControllerParameters(const ControllerParameters& params, flo
         _animVars.set("hipsType", (int)IKTarget::Type::Unknown);
     }
 
-    if (hipsEnabled && spine2Enabled) {
+    if (hipsEnabled  && spine2Enabled) {
         _animVars.set("spine2Type", (int)IKTarget::Type::Spline);
         _animVars.set("spine2Position", params.primaryControllerPoses[PrimaryControllerType_Spine2].trans());
         _animVars.set("spine2Rotation", params.primaryControllerPoses[PrimaryControllerType_Spine2].rot());

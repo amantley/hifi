@@ -3040,13 +3040,17 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     glm::mat4 desiredWorldMatrix = myAvatar.getSensorToWorldMatrix() * desiredBodyMatrix;
     glm::mat4 currentWorldMatrix = myAvatar.getSensorToWorldMatrix() * currentBodyMatrix;
 
+    glm::quat currentHips = myAvatar.getAbsoluteJointRotationInObjectFrame(myAvatar.getJointIndex("Hips"));
+
     AnimPose followWorldPose(currentWorldMatrix);
 
     // remove scale present from sensorToWorldMatrix
     followWorldPose.scale() = glm::vec3(1.0f);
 
     if (isActive(Rotation)) {
-        followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+        //followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+        followWorldPose.rot() = Quaternions::Y_180 * currentHips;
+        qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
     }
     if (isActive(Horizontal)) {
         glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);

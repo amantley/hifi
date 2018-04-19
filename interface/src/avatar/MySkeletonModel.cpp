@@ -180,6 +180,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         }
 
         AnimPose hips = computeHipsInSensorFrame(myAvatar, isFlying);
+        //hips.rot() = Quaternions::Y_180*Quaternions::IDENTITY;
 
         // smootly lerp hips, in sensorframe, with different coeff for horiz and vertical translation.
         const float ROT_ALPHA = 0.9f;
