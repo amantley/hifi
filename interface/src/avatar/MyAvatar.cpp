@@ -3051,15 +3051,15 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     AnimPose followWorldPose(currentWorldMatrix);
 
     glm::quat currentHipsLocal = myAvatar.getAbsoluteJointRotationInObjectFrame(myAvatar.getJointIndex("Hips"));
-    const glm::quat hipsinWorldSpace = followWorldPose.rot() * (Quaternions::Y_180 * currentHipsLocal);
+    const glm::quat hipsinWorldSpace = followWorldPose.rot() * (Quaternions::Y_180 * (currentHipsLocal));
     const glm::vec3 avatarUpWorld = glm::normalize(followWorldPose.rot()*(Vectors::UP));
-    glm::quat resultingswinginworld;
-    glm::quat resultingtwistinworld;
+    glm::quat resultingSwingInWorld;
+    glm::quat resultingTwistInWorld;
     
-    const glm::quat testrot = glm::angleAxis((PI/2), glm::vec3(0.0f, 1.0f, 0.0f));
-    swingTwistDecomposition(followWorldPose.rot(), avatarUpWorld, resultingswinginworld, resultingtwistinworld);
+    //const glm::quat testrot = glm::angleAxis((PI/2), glm::vec3(0.0f, 1.0f, 0.0f));
+    swingTwistDecomposition(hipsinWorldSpace, avatarUpWorld, resultingSwingInWorld, resultingTwistInWorld);
 
-    qCDebug(interfaceapp) << "hipsspace in world" << hipsinWorldSpace << "the up axis is: " << avatarUpWorld  << " the twist is " << resultingtwistinworld;
+    //qCDebug(interfaceapp) << "hipsspace in world" << hipsinWorldSpace << "the up axis is: " << avatarUpWorld  << " the twist is " << resultingtwistinworld;
 
 
     
@@ -3068,9 +3068,9 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     followWorldPose.scale() = glm::vec3(1.0f);
 
     if (isActive(Rotation)) {
-        followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
-        //followWorldPose.rot() = Quaternions::Y_180 * cancelOutRollAndPitch(currentHips);
-        qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
+        //followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+        followWorldPose.rot() = resultingTwistInWorld;
+        //qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
     }
     if (isActive(Horizontal)) {
         glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
