@@ -2772,6 +2772,14 @@ void MyAvatar::triggerRotationRecenter() {
     _follow.setForceActivateRotation(true);
 }
 
+
+glm::mat4 MyAvatar::deriveBodyFromAvatarHips() const {
+
+    //to do AA
+    glm::mat4 dummy;
+    return dummy;
+}
+
 // old school meat hook style
 glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     glm::vec3 headPosition;
@@ -3040,16 +3048,28 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     glm::mat4 desiredWorldMatrix = myAvatar.getSensorToWorldMatrix() * desiredBodyMatrix;
     glm::mat4 currentWorldMatrix = myAvatar.getSensorToWorldMatrix() * currentBodyMatrix;
 
-    glm::quat currentHips = myAvatar.getAbsoluteJointRotationInObjectFrame(myAvatar.getJointIndex("Hips"));
-
     AnimPose followWorldPose(currentWorldMatrix);
+
+    glm::quat currentHipsLocal = myAvatar.getAbsoluteJointRotationInObjectFrame(myAvatar.getJointIndex("Hips"));
+    const glm::quat hipsinWorldSpace = followWorldPose.rot() * (Quaternions::Y_180 * currentHipsLocal);
+    const glm::vec3 avatarUpWorld = glm::normalize(followWorldPose.rot()*(Vectors::UP));
+    glm::quat resultingswinginworld;
+    glm::quat resultingtwistinworld;
+    
+    const glm::quat testrot = glm::angleAxis((PI/2), glm::vec3(0.0f, 1.0f, 0.0f));
+    swingTwistDecomposition(followWorldPose.rot(), avatarUpWorld, resultingswinginworld, resultingtwistinworld);
+
+    qCDebug(interfaceapp) << "hipsspace in world" << hipsinWorldSpace << "the up axis is: " << avatarUpWorld  << " the twist is " << resultingtwistinworld;
+
+
+    
 
     // remove scale present from sensorToWorldMatrix
     followWorldPose.scale() = glm::vec3(1.0f);
 
     if (isActive(Rotation)) {
-        //followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
-        followWorldPose.rot() = Quaternions::Y_180 * currentHips;
+        followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+        //followWorldPose.rot() = Quaternions::Y_180 * cancelOutRollAndPitch(currentHips);
         qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
     }
     if (isActive(Horizontal)) {
