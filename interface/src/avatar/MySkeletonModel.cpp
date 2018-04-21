@@ -23,7 +23,7 @@
 #ifdef USE_TENSORFLOW
 static graphAction * hipsPredictionGraph;
 std::unique_ptr<tensorflow::Session>  session6;
-float outputfilter[10][3];
+float outputfilter[3][3];
 #endif //tensorflow
 
 
@@ -34,7 +34,7 @@ MySkeletonModel::MySkeletonModel(Avatar* owningAvatar, QObject* parent) : Skelet
 #ifdef POSITION_MODEL
     //hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_1600.bytes", &session6);
     //hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_combo_330.bytes", &session6);
-    hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_combo_99k.bytes", &session6);
+    hipsPredictionGraph = new graphAction("C:/machinelearning/tensor/tempGraphs/my_time_series_model_headhands_testmix_combo_r30.bytes", &session6);
     data_hifi = { 0.0f,0.0f,0.0f,0.0f,0.0f,  
         0.0f,0.0f,0.0f,0.0f,0.0f,  
         0.0f,0.0f,0.0f,0.0f,0.0f,  
@@ -457,14 +457,14 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 #ifdef POSITION_MODEL
     //now we are ready to do the inferencing, ie get the current model output for the current input tensor.
     uint start = GetTickCount();
-    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6, _X_input_length,_Y_output_length,50,"rnn/transpose","xdrop");
+    float * answer = (*hipsPredictionGraph).getAnswer(&data_hifi[0], &session6, _X_input_length,_Y_output_length,50,"rnn/transpose","state");
     uint timeItTook = GetTickCount() - start;
 
     //filter here
     float sumx = 0.0f;
     float sumy = 0.0f;
     float sumz = 0.0f;
-    for (int p = 0; p < 9; p++)
+    for (int p = 0; p < 3; p++)
     {
         sumx += outputfilter[p+1][0];
         outputfilter[p][0] = outputfilter[p + 1][0];
@@ -474,13 +474,18 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         outputfilter[p][2] = outputfilter[p + 1][2];
 
     }
-    answer[0] = (answer[0] + sumx) / 10.0f;
-    answer[1] = (answer[1] + sumy) / 10.0f;
-    answer[2] = (answer[2] + sumz) / 10.0f;
+    glm::vec3 tempanswer;
+    tempanswer[0] = (answer[0] + sumx) / 4.0f;
+    tempanswer[1] = (answer[1] + sumy) / 4.0f;
+    tempanswer[2] = (answer[2] + sumz) / 4.0f;
     
-    outputfilter[9][0] = answer[0];
-    outputfilter[9][1] = answer[1];
-    outputfilter[9][2] = answer[2];
+    outputfilter[3][0] = answer[0];
+    outputfilter[3][1] = answer[1];
+    outputfilter[3][2] = answer[2];
+
+    answer[0] = tempanswer[0];
+    answer[1] = tempanswer[1];
+    answer[2] = tempanswer[2];
 
 
 
@@ -535,7 +540,8 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         //save the unscaled offset for our model inputs.
         glm::vec3 unscaledOffset = _predictedOffset;
         //here is where we reinflate the scale dependent on the user's height
-        _predictedOffset = _predictedOffset*1.68f;
+        float userheight = 1.68f;//1.68f;
+        _predictedOffset = _predictedOffset*userheight;
         //put predictedoffset back in sensor space
         //_predictedOffset = glm::inverse(hipsSpaceRot)*_predictedOffset;
 
@@ -547,7 +553,9 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             //localhip.y += 1.2f;
         glm::vec3 scaledbackvec = (_predictedOffset / (float)(_predictedOffset.length()))*avatartorsolength;
         AnimPose ph = AnimPose(Quaternions::Y_180, (avatarsensorhead.getTranslation() + _predictedOffset));
-
+        //this is to just get rid of the y for now.
+        //********************************************
+        //ph.trans().y = -0.3f;
         _previousHipPos = headpos_scaled + glm::vec3(answer[0], answer[1], answer[2]);
         //qCDebug(interfaceapp) << "Previous Hips: " << _previousHipPos.x << " " << _previousHipPos.y << " " << _previousHipPos.z << endl;
         //qCDebug(interfaceapp) << "Predict Hips: " << _predictedOffset.x*1.68f << " " << _predictedOffset.y*1.68f << " " << _predictedOffset.z*1.68f << endl;
@@ -599,6 +607,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         AnimPose sensorToRigPose(invRigMat * myAvatar->getSensorToWorldMatrix());
         
         AnimPose temp = sensorToRigPose * hips;
+        temp.trans().z += .10f;
 		
 #ifdef USE_TENSORFLOW
 #ifdef POSITION_MODEL
