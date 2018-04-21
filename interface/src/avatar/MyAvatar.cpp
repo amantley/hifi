@@ -1055,6 +1055,20 @@ float loadSetting(Settings& settings, const QString& name, float defaultValue) {
     return value;
 }
 
+void MyAvatar::setToggleHips(bool followHead) {
+    _follow.setToggleHipsFollowing(followHead);
+}
+
+void MyAvatar::FollowHelper::setToggleHipsFollowing(bool followHead) {
+    _toggleHipsFollowing = followHead;
+    //qCDebug(interfaceapp) << "the hips following variable is " << _toggleHipsFollowing;
+}
+
+bool MyAvatar::FollowHelper::getToggleHipsFollowing() const {
+    return _toggleHipsFollowing;
+}
+
+
 void MyAvatar::setEnableDebugDrawDefaultPose(bool isEnabled) {
     _enableDebugDrawDefaultPose = isEnabled;
 
@@ -1182,6 +1196,7 @@ void MyAvatar::loadData() {
     settings.endGroup();
 
     setEnableMeshVisible(Menu::getInstance()->isOptionChecked(MenuOption::MeshVisible));
+    _follow.setToggleHipsFollowing (Menu::getInstance()->isOptionChecked(MenuOption::ToggleHipsFollowing));
     setEnableDebugDrawDefaultPose(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawDefaultPose));
     setEnableDebugDrawAnimPose(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawAnimPose));
     setEnableDebugDrawPosition(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawPosition));
@@ -2772,14 +2787,6 @@ void MyAvatar::triggerRotationRecenter() {
     _follow.setForceActivateRotation(true);
 }
 
-
-glm::mat4 MyAvatar::deriveBodyFromAvatarHips() const {
-
-    //to do AA
-    glm::mat4 dummy;
-    return dummy;
-}
-
 // old school meat hook style
 glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     glm::vec3 headPosition;
@@ -3068,8 +3075,16 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     followWorldPose.scale() = glm::vec3(1.0f);
 
     if (isActive(Rotation)) {
-        //followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
-        followWorldPose.rot() = resultingTwistInWorld;
+        if (getToggleHipsFollowing()) {
+            //use the hmd reading for the hips follow
+            followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+            qCDebug(interfaceapp) << "follow the head";
+            
+        } else {
+            //use the hips as changed by the arms azimuth for the hips to follow.
+            followWorldPose.rot() = resultingTwistInWorld;
+            qCDebug(interfaceapp) << "follow the hips";
+        }
         //qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
     }
     if (isActive(Horizontal)) {

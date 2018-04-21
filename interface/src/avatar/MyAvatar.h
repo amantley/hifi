@@ -580,9 +580,6 @@ public:
     // derive avatar body position and orientation from the current HMD Sensor location.
     // results are in HMD frame
     glm::mat4 deriveBodyFromHMDSensor() const;
-    
-    // derive the body position from the hips instead of the camera.
-    glm::mat4 deriveBodyFromAvatarHips() const;
 
     Q_INVOKABLE bool isUp(const glm::vec3& direction) { return glm::dot(direction, _worldUpDirection) > 0.0f; }; // true iff direction points up wrt avatar's definition of up.
     Q_INVOKABLE bool isDown(const glm::vec3& direction) { return glm::dot(direction, _worldUpDirection) < 0.0f; };
@@ -624,6 +621,7 @@ public slots:
 
     Q_INVOKABLE void updateMotionBehaviorFromMenu();
 
+    void setToggleHips(bool followHead);
     void setEnableDebugDrawDefaultPose(bool isEnabled);
     void setEnableDebugDrawAnimPose(bool isEnabled);
     void setEnableDebugDrawPosition(bool isEnabled);
@@ -839,9 +837,12 @@ private:
         void setForceActivateVertical(bool val);
         bool getForceActivateHorizontal() const;
         void setForceActivateHorizontal(bool val);
-        std::atomic<bool> _forceActivateRotation{ false };
-        std::atomic<bool> _forceActivateVertical{ false };
-        std::atomic<bool> _forceActivateHorizontal{ false };
+        bool getToggleHipsFollowing() const;
+        void setToggleHipsFollowing(bool followHead);
+        std::atomic<bool> _forceActivateRotation { false };
+        std::atomic<bool> _forceActivateVertical { false };
+        std::atomic<bool> _forceActivateHorizontal { false };
+        std::atomic<bool> _toggleHipsFollowing { true };
     };
     FollowHelper _follow;
 
@@ -862,6 +863,7 @@ private:
     bool _enableDebugDrawIKConstraints { false };
     bool _enableDebugDrawIKChains { false };
     bool _enableDebugDrawDetailedCollision { false };
+    //bool _toggleHipsFollowing { true };
 
     mutable bool _cauterizationNeedsUpdate; // do we need to scan children and update their "cauterized" state?
 
