@@ -42,6 +42,7 @@ var TABLET_BUTTON_NAME = "CG";
 var RECENTER = false;
 MyAvatar.hmdLeanRecenterEnabled = RECENTER;
 var dampening = 0.0;
+var steptimer = 0.0;
 
 
 
@@ -564,7 +565,24 @@ function update(dt) {
 	
     //hipsPosition = temp4;
 	//filter to ease the cg around
-	hipsPosition = Vec3.sum(Vec3.multiply(.05,temp4), Vec3.multiply(0.95,hipsPosition));
+	//hipsPosition = Vec3.sum(Vec3.multiply(.05, temp4), Vec3.multiply(0.95, hipsPosition));
+    //or use the new function from c++
+	if (!MyAvatar.isRecenteringHorizontally()) {
+	    //only do this when we are not translating the root.
+	    hipsPosition = temp4;
+	    steptimer = 0.0;
+	    print("regular hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+	} else {
+	    print("not using cg here");
+	    //if (steptimer < 1.0) {
+	        print("easing time: " + steptimer);
+	        steptimer += dt;
+	        hipsPosition = Vec3.mix(hipsPosition, {x:tposehipsPos.x,y:temp4.y,z:tposehipsPos.z}, 0.05);
+	        print("tpose hips " + tposehipsPos.x + " " + tposehipsPos.y + " " + tposehipsPos.z);
+	        print("interped hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+	    //}
+	}
+    //else do nothing.
 	
 	var newy_axis_hips = Vec3.normalize(Vec3.subtract(currentheadPos,hipsPosition));
 	var forward = {x:0.0,y:0.0,z:1.0};

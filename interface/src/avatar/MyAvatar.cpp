@@ -3481,6 +3481,10 @@ void MyAvatar::updateHoldActions(const AnimPose& prePhysicsPose, const AnimPose&
     }
 }
 
+bool MyAvatar::isRecenteringHorizontally() const {
+    return _follow.isActive(FollowHelper::Horizontal);
+}
+
 const MyHead* MyAvatar::getMyHead() const {
     return static_cast<const MyHead*>(getHead());
 }

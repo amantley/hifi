@@ -430,6 +430,15 @@ public:
     Q_INVOKABLE void triggerHorizontalRecenter();
     Q_INVOKABLE void triggerRotationRecenter();
 
+    /**jsdoc
+    *The isRecenteringHorizontally function returns true if MyAvatar
+    *is translating the root of the Avatar to keep the center of gravity under the head.
+    *isActive(Horizontal) is returned.
+    *@function MyAvatar.isRecenteringHorizontally
+    */
+
+    Q_INVOKABLE bool isRecenteringHorizontally() const;
+
     eyeContactTarget getEyeContactTarget();
 
     const MyHead* getMyHead() const;
