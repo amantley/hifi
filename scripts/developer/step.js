@@ -50,6 +50,7 @@ var STEPTURN = true;
 var MY_HEIGHT = 1.15;
 var mode_array = new Array(100);
 var mode_height = -10.0;
+var steptimer = -1.0;
 
 var leaningdot = 1.0;
 var leaningdotaverage = 1.0;
@@ -98,7 +99,7 @@ var handlerId2 = MyAvatar.addAnimationStateHandler(function (properties) {
 
 function messageSend(message) {
     Messages.sendLocalMessage(MESSAGE_CHANNEL, message);
-	print("message sent " + JSON.stringify(message));
+	//print("message sent " + JSON.stringify(message));
 	
 }
 function messageHandler(channel, messageString, senderID) {
@@ -365,11 +366,14 @@ function update(dt) {
 		//print("in support " + inSupport + " is head level? "+ isHeadLevel + " diff from average  "  + heightDifferenceFromAverage);
 	if ( !inSupport && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel ) { //&& (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&!isStepping &&
         isStepping = true;
-		if (STEPTURN) {
-			//print("trigger recenter=======================================================");
+		if (STEPTURN && (steptimer < 0.0) ) {
+			print("trigger recenter=======================================================");
 			MyAvatar.triggerHorizontalRecenter();
+		    //wait half a second to trigger again.
+			steptimer = .5;
 		}
-    }
+	}
+	steptimer -= dt;
     if (isStepping && (lateralDistanceFromAverage < DONE_STEPPING_DISTANCE)) {
         isStepping = false;
     }
@@ -422,7 +426,7 @@ function update(dt) {
 				message_frequency = message_frequency - 1;
 			}
 		}
-		print("hips rotation step- js " + hipsRotation.x + " " + hipsRotation.y + " " + hipsRotation.z + " " + hipsRotation.w);
+		//print("hips rotation step- js " + hipsRotation.x + " " + hipsRotation.y + " " + hipsRotation.z + " " + hipsRotation.w);
 		var hipsrotmyavatar = MyAvatar.getAbsoluteJointRotationInObjectFrame(MyAvatar.getJointIndex("Hips"));
 		//print("hips my avatar readiing js " + hipsrotmyavatar.x + " " + hipsrotmyavatar.y + " " + hipsrotmyavatar.z + " " + hipsrotmyavatar.w);
 		

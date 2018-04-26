@@ -2682,6 +2682,12 @@ void Application::initializeUi() {
     // Now that the menu is instantiated, ensure the display plugin menu is properly updated
     updateDisplayMode();
     flushMenuUpdates();
+
+    // The display plugins are created before the menu now, so we need to do this here to hide the menu bar
+    // now that it exists
+    if (_window && _window->isFullScreen()) {
+        setFullscreen(nullptr, true);
+    }
 }
 
 
@@ -4735,7 +4741,7 @@ void Application::updateLOD(float deltaTime) const {
     }
 }
 
-void Application::pushPostUpdateLambda(void* key, std::function<void()> func) {
+void Application::pushPostUpdateLambda(void* key, const std::function<void()>& func) {
     std::unique_lock<std::mutex> guard(_postUpdateLambdasLock);
     _postUpdateLambdas[key] = func;
 }
@@ -7345,12 +7351,21 @@ void Application::windowMinimizedChanged(bool minimized) {
     }
 }
 
-void Application::postLambdaEvent(std::function<void()> f) {
+void Application::postLambdaEvent(const std::function<void()>& f) {
     if (this->thread() == QThread::currentThread()) {
         f();
     } else {
         QCoreApplication::postEvent(this, new LambdaEvent(f));
     }
+}
+
+void Application::sendLambdaEvent(const std::function<void()>& f) {
+    if (this->thread() == QThread::currentThread()) {
+        f();
+    } else {
+        LambdaEvent event(f);
+        QCoreApplication::sendEvent(this, &event);
+    } 
 }
 
 void Application::initPlugins(const QStringList& arguments) {

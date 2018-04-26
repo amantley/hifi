@@ -43,12 +43,15 @@ var RECENTER = false;
 MyAvatar.hmdLeanRecenterEnabled = RECENTER;
 var dampening = 0.0;
 var steptimer = 0.0;
+var hipsUnderHead;
+var filteredhipsunderhead;
 
 
 
 
 var armsHipRotation = {x: 0, y: 1, z: 0, w: 0};
 var hipsPosition = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
+var filteredHipsPosition;
 var hipsRotation = {x: 0, y: 0, z: 0, w: 1};
 var headToHips = hipsPosition.y - MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head")).y;
 // AJT: TODO USE THIS
@@ -61,7 +64,7 @@ function messageHandler(channel, messageString, senderID) {
 	if (channel !== MESSAGE_CHANNEL) {
         return;
     }
-	print("received a step message " + messageString);
+	//print("received a step message " + messageString);
 	
 	var hipquat = JSON.parse(messageString);
 	armsHipRotation = Quat.multiply(ROT_Y180,hipquat);
@@ -544,7 +547,8 @@ function update(dt) {
 	var headminuship_xz = Vec3.length(xzdiff);
 	
 	
-	var headhipdefault = Vec3.length(Vec3.subtract(tposeheadPos,tposehipsPos));
+	var headhipoffset = Vec3.subtract(tposeheadPos, tposehipsPos);
+	var headhipdefault = Vec3.length(Vec3.subtract(tposeheadPos, tposehipsPos));
 	var neckhipdefault = Vec3.length(Vec3.subtract(tposeneckPos,tposehipsPos));
 	var neckhipmag = Vec3.length(Vec3.subtract(currentneckPos,currenthipsPos));
 	var headhipmag = Vec3.length(Vec3.subtract(currentheadPos,currenthipsPos));
@@ -556,34 +560,84 @@ function update(dt) {
 	//print("default leg height " + tposerightlegPos.y);
 	
 	
-	//print("the current head " + currentheadPos.x +" "+ currentheadPos.y + " " + currentheadPos.z);
+	//print("the head hip offset " + headhipoffset.x +" "+ headhipoffset.y + " " + headhipoffset.z);
     temp4.y = (currentheadPos.y - hipheight);
 	if (temp4.y > tposehipsPos.y){
 		temp4.y = 0.0;
 	}
 	//print("arms hips rotation " + armsHipRotation.x +" "+armsHipRotation.y + " " +armsHipRotation.z +" "+ armsHipRotation.w );
 	
-    //hipsPosition = temp4;
+	var globalPosRoot = MyAvatar.position;
+	var globalRotRoot = MyAvatar.orientation;
+	var inverseGlobalRotRoot = Quat.inverse(globalRotRoot);
+	var globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, temp4));
+	
+	//hipsPosition = Vec3.multiplyQbyV(globalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
+
+	//var globalPosHead = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currentheadPos));
+	//var globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currenthipsPos));
+	//var globalOffsetHeadHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, headhipoffset));
+	//hipsUnderHead = globalPosHead - globalOffsetHeadHips;
+	//var globalHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currenthipsPos));
+
+	//filteredhipsunderhead = Vec3.mix(filteredhipsunderhead, hipsUnderHead,.05);
+	//hipsPosition = hipsUnderHead;
+	//print("hips under head " + hipsUnderHead.x + " " + hipsUnderHead.y + " " + hipsUnderHead.z);
+	//print("globalPosRoot" + globalPosRoot.x + " " + globalPosRoot.y + " " + globalPosRoot.z)
+
+//    hipsPosition = temp4;
 	//filter to ease the cg around
-	//hipsPosition = Vec3.sum(Vec3.multiply(.05, temp4), Vec3.multiply(0.95, hipsPosition));
+	//hipsPosition = Vec3.sum(Vec3.multiply(.5, temp4), Vec3.multiply(0.5, hipsPosition));
     //or use the new function from c++
+    
+    
 	if (!MyAvatar.isRecenteringHorizontally()) {
 	    //only do this when we are not translating the root.
-	    hipsPosition = temp4;
-	    steptimer = 0.0;
-	    print("regular hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+	    //hipsPosition = temp4;
+	    //globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, temp4));
+	    //filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosHips, 0.15);
+	    //hipsPosition = Vec3.multiplyQbyV(globalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
+        //local interp version
+//	    hipsPosition = Vec3.mix(hipsPosition, temp4, .03);
+	    //global ijnterp version
+	    filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosHips, 0.05);
+	    hipsPosition = Vec3.multiplyQbyV(globalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
+	   // steptimer = 0.0;
+	   // print("regular hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+	   // var globalPosHead = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currentheadPos));
+	   // print("global position head " + globalPosHead.x + " " + globalPosHead.y + " " + globalPosHead.z);
+	   // var globalOffsetHeadHips = Vec3.multiplyQbyV(inverseGlobalRotRoot, headhipoffset);
+	   // print("global offset head hips " + globalOffsetHeadHips.x + " " + globalOffsetHeadHips.y + " " + globalOffsetHeadHips.z);
+	   // hipsUnderHead = Vec3.subtract(globalPosHead, globalOffsetHeadHips);
+	   // print("hips under head " + hipsUnderHead.x + " " + hipsUnderHead.y + " " + hipsUnderHead.z);
+	   // filteredhipsunderhead = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currenthipsPos));
 	} else {
-	    print("not using cg here");
+        //first time we need to find where we are and where we are going.
+        //then interpolate to the destination.
+	    //print("not using cg here");
 	    //if (steptimer < 1.0) {
 	        print("easing time: " + steptimer);
 	        steptimer += dt;
-	        hipsPosition = Vec3.mix(hipsPosition, {x:tposehipsPos.x,y:temp4.y,z:tposehipsPos.z}, 0.05);
-	        print("tpose hips " + tposehipsPos.x + " " + tposehipsPos.y + " " + tposehipsPos.z);
-	        print("interped hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+        //local interpolation
+//	        hipsPosition = Vec3.mix(hipsPosition, { x: 0, y: 0, z: 0 }, .01);//{x:tposehipsPos.x,y:temp4.y,z:tposehipsPos.z}, 0.05);
+	    //global interpolation
+	        //globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(inverseGlobalRotRoot, currenthipsPos));
+	       // print("global position hips " + globalPosHips.x + " " + globalPosHips.y + " " + globalPosHips.z);
+	        filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosRoot, 0.2);
+	       // print("filtered under head " + filteredHipsPosition.x + " " + filteredHipsPosition.y + " " + filteredHipsPosition.z);
+	       hipsPosition = Vec3.multiplyQbyV(globalRotRoot, Vec3.subtract(filteredHipsPosition,globalPosRoot));
+            
+	       // print("tpose hips " + tposehipsPos.x + " " + tposehipsPos.y + " " + tposehipsPos.z);
+	       // print("interped hips " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
 	    //}
+	    //hipsPosition = { x: 0, y: 0, z: 0 };
+	    print("hips during step " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
+	    //filteredHipsPosition = Vec3.mix(filteredHipsPosition, hipsUnderHead, 0.5);
+	    //hipsPosition = Vec3.multiplyQbyV(globalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
 	}
     //else do nothing.
 	
+
 	var newy_axis_hips = Vec3.normalize(Vec3.subtract(currentheadPos,hipsPosition));
 	var forward = {x:0.0,y:0.0,z:1.0};
 	var xaxis = {x:1.0,y:0.0,z:0.0};
