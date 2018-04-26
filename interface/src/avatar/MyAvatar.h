@@ -1112,15 +1112,15 @@ public slots:
      */
     Q_INVOKABLE void updateMotionBehaviorFromMenu();
 
-<<<<<<< HEAD
+
     void setToggleHips(bool followHead);
-=======
+
 
     /**jsdoc
      * @function MyAvatar.setEnableDebugDrawDefaultPose
      * @param {boolean} enabled
      */
->>>>>>> upstream/master
+
     void setEnableDebugDrawDefaultPose(bool isEnabled);
     /**jsdoc
      * @function MyAvatar.setEnableDebugDrawAnimPose
