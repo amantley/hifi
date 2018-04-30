@@ -405,6 +405,48 @@ function slope(num) {
     return 1 - ( 1/(1+constant*num));
 }
 
+function dampenCgMovement(rawCg) {
+
+    var distanceFromCenterZ = rawCg.z;
+    var distanceFromCenterX = rawCg.x;
+
+    //  clampFront = -0.10;
+    //  clampBack = 0.17;
+    //  clampLeft = -0.50;
+    //  clampRight = 0.50;
+
+    var dampedCg = { x: 0, y: 0, z: 0 };
+
+    if (rawCg.z < 0.0) {
+        var inputFront;
+        inputFront = Math.abs(distanceFromCenterZ / clampFront);
+        var scaleFrontNew = slope(inputFront);
+        dampedCg.z = scaleFrontNew * clampFront;
+    } else {
+        //  cg.z > 0.0
+        var inputBack;
+        inputBack = Math.abs(distanceFromCenterZ / clampBack);
+        var scaleBackNew = slope(inputBack);
+        dampedCg.z = scaleBackNew * clampBack;
+    }
+
+    if (rawCg.x > 0.0) {
+        var inputRight;
+        inputRight = Math.abs(distanceFromCenterX / clampRight);
+        var scaleRightNew = slope(inputRight);
+        dampedCg.x = scaleRightNew * clampRight;
+    } else {
+        //  left of center
+        var inputLeft;
+        inputLeft = Math.abs(distanceFromCenterX / clampLeft);
+        var scaleLeftNew = slope(inputLeft);
+        dampedCg.x = scaleLeftNew * clampLeft;
+    }
+    return dampedCg;
+
+
+
+}
 
 function update(dt) {
 
@@ -422,6 +464,7 @@ function update(dt) {
     //  desiredCg = cg;
     //  find the distance of the cg to each of the four lines defining the base of support.
     //  take the closest line and do the dampening displacement function. 
+    /*
     var p1 = { x: clampLeft, y: 0, z: clampFront };
     var p2 = { x: clampRight, y: 0, z: clampFront };
     var p3 = { x: clampLeft, y: 0, z: clampBack };
@@ -430,73 +473,46 @@ function update(dt) {
     var retDist2 = distancetoline(p2, p4, cg);
     var retDist3 = distancetoline(p4, p3, cg);
     var retDist4 = distancetoline(p3, p1, cg);
-
+    */
     //  clampFront = -0.10;
     //  clampBack = 0.17;
     //  clampLeft = -0.50;
     //  clampRight = 0.50;
-    var distanceFromCenterZ = cg.z;
+    
 
+    desiredCg = dampenCgMovement(cg);
+    /*
     if (cg.z < 0.0) {
-        //  scale displacement forward
-        //  scaleforwardback = Math.sin( (1 - (retdist1/0.15))*(Math.PI/2));
-        //  only do this between 0-.05 distance.  we don't want a negative number for scale tanh
         var inputFront;
-        if (isLeft(p1, p2, cg)) {
-            //inputFront = (1 - (retDist1 / Math.abs(clampFront)));
-            inputFront = Math.abs(distanceFromCenterZ / clampFront);
-        } else {
-            //  right of base of support line
-            //inputFront = (1 + (retDist1 / Math.abs(clampFront)));
-            inputFront = Math.abs(distanceFromCenterZ / clampFront);
-
-        }
+        inputFront = Math.abs(distanceFromCenterZ / clampFront);
         var scaleFrontNew = slope(inputFront);
         desiredCg.z = scaleFrontNew * clampFront;
-
     } else {
         //  cg.z > 0.0
         var inputBack;
-        if (isLeft(p3, p4, cg)) {
-            //  inputBack = (1 + (retDist3 / Math.abs(clampBack)));
-            inputBack = Math.abs(distanceFromCenterZ / clampBack);
-        } else {
-            //  right of base of suppo'rt line
-            //  inputBack = (1 - (retDist3 / Math.abs(clampBack)));
-            inputBack = Math.abs(distanceFromCenterZ / clampBack);
-        }
+        inputBack = Math.abs(distanceFromCenterZ / clampBack);
         var scaleBackNew = slope(inputBack);
-        //  print("output front " + scalefrontnew);
         desiredCg.z = scaleBackNew * clampBack;
     }
 
     if (retDist2 < retDist4) {
-
         var inputRight;
-        if (isLeft(p2, p4, cg)) {
-            inputRight = (1 - (retDist2 / Math.abs(clampRight)));
-        } else {
-            //  right of base of support line
-            inputRight = (1 + (retDist2 / Math.abs(clampRight)));
-        }
+        inputRight = Math.abs(distanceFromCenterX / clampRight);
         var scaleRightNew = slope(inputRight);
         desiredCg.x = scaleRightNew * clampRight;
-
-
     } else {
+        //  left of center
         var inputLeft;
-        if (isLeft(p1, p3, cg)) {
-            inputLeft = (1 + (retDist4 / Math.abs(clampLeft)));
-        } else {
-            inputLeft = (1 - (retDist4 / Math.abs(clampLeft)));
-        }
-        //  print("input left" + input);
+        inputLeft = Math.abs(distanceFromCenterX / clampLeft);
         var scaleLeftNew = slope(inputLeft);
         desiredCg.x = scaleLeftNew * clampLeft;
-
     }
-
+    */
     cg.y = FLOOR_Y;
+
+    //  after the dampening above it might be right to clamp the desiredcg to the edge of the base
+    //  of support.
+
     if (DEBUGDRAWING) {
         DebugDraw.addMyAvatarMarker("left toe", IDENT_QUAT, leftToeEnd, BLUE);
         DebugDraw.addMyAvatarMarker("right toe", IDENT_QUAT, rightToeEnd, BLUE);
