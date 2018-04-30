@@ -435,6 +435,7 @@ function update(dt) {
     //  clampBack = 0.17;
     //  clampLeft = -0.50;
     //  clampRight = 0.50;
+    var distanceFromCenterZ = cg.z;
 
     if (cg.z < 0.0) {
         //  scale displacement forward
@@ -442,10 +443,13 @@ function update(dt) {
         //  only do this between 0-.05 distance.  we don't want a negative number for scale tanh
         var inputFront;
         if (isLeft(p1, p2, cg)) {
-            inputFront = (1 - (retDist1 / Math.abs(clampFront)));
+            //inputFront = (1 - (retDist1 / Math.abs(clampFront)));
+            inputFront = Math.abs(distanceFromCenterZ / clampFront);
         } else {
             //  right of base of support line
-            inputFront = (1 + (retDist1 / Math.abs(clampFront)));
+            //inputFront = (1 + (retDist1 / Math.abs(clampFront)));
+            inputFront = Math.abs(distanceFromCenterZ / clampFront);
+
         }
         var scaleFrontNew = slope(inputFront);
         desiredCg.z = scaleFrontNew * clampFront;
@@ -454,10 +458,12 @@ function update(dt) {
         //  cg.z > 0.0
         var inputBack;
         if (isLeft(p3, p4, cg)) {
-            inputBack = (1 + (retDist3 / Math.abs(clampBack)));
+            //  inputBack = (1 + (retDist3 / Math.abs(clampBack)));
+            inputBack = Math.abs(distanceFromCenterZ / clampBack);
         } else {
             //  right of base of suppo'rt line
-            inputBack = (1 - (retDist3 / Math.abs(clampBack)));
+            //  inputBack = (1 - (retDist3 / Math.abs(clampBack)));
+            inputBack = Math.abs(distanceFromCenterZ / clampBack);
         }
         var scaleBackNew = slope(inputBack);
         //  print("output front " + scalefrontnew);
