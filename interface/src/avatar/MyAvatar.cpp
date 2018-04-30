@@ -2825,6 +2825,14 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     return createMatFromQuatAndPos(headOrientationYawOnly, bodyPos);
 }
 
+glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
+    //implement the cg code here.
+    glm::vec3 headPosition;
+    glm::quat headOrientation;
+    return createMatFromQuatAndPos(headOrientation, headPosition);
+}
+
+
 float MyAvatar::getUserHeight() const {
     return _userHeight.get();
 }

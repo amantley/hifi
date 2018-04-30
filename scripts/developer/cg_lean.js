@@ -94,7 +94,7 @@ function initCg() {
 
     armsHipRotation = { x: 0, y: 1, z: 0, w: 0 };
     hipsPosition = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-    filteredHipsPosition = hipsPosition;
+    filteredHipsPosition = MyAvatar.position;
     hipsRotation = { x: 0, y: 0, z: 0, w: 1 };
 
     jointList = MyAvatar.getJointNames();
@@ -430,30 +430,34 @@ function update(dt) {
     var retDist2 = distancetoline(p2, p4, cg);
     var retDist3 = distancetoline(p4, p3, cg);
     var retDist4 = distancetoline(p3, p1, cg);
-/*
+
+    //  clampFront = -0.10;
+    //  clampBack = 0.17;
+    //  clampLeft = -0.50;
+    //  clampRight = 0.50;
+
     if (cg.z < 0.0) {
         //  scale displacement forward
         //  scaleforwardback = Math.sin( (1 - (retdist1/0.15))*(Math.PI/2));
         //  only do this between 0-.05 distance.  we don't want a negative number for scale tanh
         var inputFront;
         if (isLeft(p1, p2, cg)) {
-            inputFront = (1 - (retDist1 / Math.abs(0.1)));
+            inputFront = (1 - (retDist1 / Math.abs(clampFront)));
         } else {
             //  right of base of support line
-            inputFront = (1 + (retDist1 / Math.abs(0.1)));
+            inputFront = (1 + (retDist1 / Math.abs(clampFront)));
         }
         var scaleFrontNew = slope(inputFront);
         desiredCg.z = scaleFrontNew * clampFront;
 
-    }
-
-    if (cg.z > 0.0) {
+    } else {
+        //  cg.z > 0.0
         var inputBack;
         if (isLeft(p3, p4, cg)) {
-            inputBack = (1 + (retDist3 / Math.abs(0.17)));
+            inputBack = (1 + (retDist3 / Math.abs(clampBack)));
         } else {
             //  right of base of suppo'rt line
-            inputBack = (1 - (retDist3 / Math.abs(0.17)));
+            inputBack = (1 - (retDist3 / Math.abs(clampBack)));
         }
         var scaleBackNew = slope(inputBack);
         //  print("output front " + scalefrontnew);
@@ -485,7 +489,7 @@ function update(dt) {
         desiredCg.x = scaleLeftNew * clampLeft;
 
     }
-*/
+
     cg.y = FLOOR_Y;
     if (DEBUGDRAWING) {
         DebugDraw.addMyAvatarMarker("left toe", IDENT_QUAT, leftToeEnd, BLUE);
@@ -532,11 +536,12 @@ function update(dt) {
     var globalRotRoot = Quat.normalize(MyAvatar.orientation);
     var inverseGlobalRotRoot = Quat.normalize(Quat.inverse(globalRotRoot));
     var globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(globalRotRoot, temp4));
+    var unRotatedHipsPosition;
 
     if (!MyAvatar.isRecenteringHorizontally()) {
         
         filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosHips, 0.1);
-        var unRotatedHipsPosition = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
+        unRotatedHipsPosition = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
         hipsPosition = Vec3.multiplyQbyV(ROT_Y180, unRotatedHipsPosition);
         print("global hips standing " + globalPosHips.x + " " + globalPosHips.y + " " + globalPosHips.z);
         print("hips during standing " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
@@ -561,8 +566,8 @@ function update(dt) {
         //  }
         //  otherwise leave the filtered hips where they are.
         
-        var unRotatedHipsPosition2 = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
-        hipsPosition = Vec3.multiplyQbyV(ROT_Y180, unRotatedHipsPosition2);
+        unRotatedHipsPosition = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
+        hipsPosition = Vec3.multiplyQbyV(ROT_Y180, unRotatedHipsPosition);
         print("global hips during step " + globalPosHips.x + " " + globalPosHips.y + " " + globalPosHips.z);
         print("hips during step " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
         print("root during step " + globalPosRoot.x + " " + globalPosRoot.y + " " + globalPosRoot.z);
@@ -572,7 +577,7 @@ function update(dt) {
     }
 
 
-    var newYaxisHips = Vec3.normalize(Vec3.subtract(currentHeadPos, hipsPosition));
+    var newYaxisHips = Vec3.normalize(Vec3.subtract(currentHeadPos, unRotatedHipsPosition));
     var forward = { x: 0.0, y: 0.0, z: 1.0 };
     //  arms hip rotation is sent from the step script
     var oldZaxisHips = Vec3.normalize(Vec3.multiplyQbyV(armsHipRotation, forward));
@@ -594,7 +599,7 @@ function update(dt) {
     
 
     hipsRotation = Quat.multiply(ROT_Y180, finalRot);
-
+    print("final rot" + finalRot.x + " "+ finalRot.y + " "+ finalRot.z +" "+ finalRot.w)
 
     if (DEBUGDRAWING) {
         DebugDraw.addMyAvatarMarker("hipsPos", IDENT_QUAT, hipsPosition, RED);
