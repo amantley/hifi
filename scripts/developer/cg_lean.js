@@ -443,9 +443,39 @@ function dampenCgMovement(rawCg) {
         dampedCg.x = scaleLeftNew * clampLeft;
     }
     return dampedCg;
+}
+
+function computeCounterBalance(desiredCgPos) {
+    //   compute hips position to maintain desiredCg
+    var HIPS_MASS = 40;
+    var totalMass = JOINT_MASSES.reduce(function (accum, obj) {
+        return accum + obj.mass;
+    }, 0);
+    var temp1 = Vec3.subtract(Vec3.multiply(totalMass + HIPS_MASS, desiredCgPos),
+                              Vec3.multiply(JOINT_MASSES[0].mass, JOINT_MASSES[0].pos));
+    var temp2 = Vec3.subtract(temp1,
+                              Vec3.multiply(JOINT_MASSES[1].mass, JOINT_MASSES[1].pos));
+    var temp3 = Vec3.subtract(temp2,
+                              Vec3.multiply(JOINT_MASSES[2].mass, JOINT_MASSES[2].pos));
+    var temp4 = Vec3.multiply(1 / HIPS_MASS, temp3);
 
 
+    var currentHead = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+    var tposeHead = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+    var tposeHips = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
 
+    var xzDiff = { x: (currentHead.x - temp4.x), y: 0, z: (currentHead.z - temp4.z) };
+    var headMinusHipXz = Vec3.length(xzDiff);
+
+    var headHipDefault = Vec3.length(Vec3.subtract(tposeHead, tposeHips));
+
+    var hipHeight = Math.sqrt((headHipDefault * headHipDefault) - (headMinusHipXz * headMinusHipXz));
+
+    temp4.y = (currentHead.y - hipHeight);
+    if (temp4.y > tposeHips.y) {
+        temp4.y = 0.0;
+    }
+    return temp4;
 }
 
 function update(dt) {
@@ -460,54 +490,8 @@ function update(dt) {
     desiredCg.y = 0;
     desiredCg.z = cg.z; 
 
-
-    //  desiredCg = cg;
-    //  find the distance of the cg to each of the four lines defining the base of support.
-    //  take the closest line and do the dampening displacement function. 
-    /*
-    var p1 = { x: clampLeft, y: 0, z: clampFront };
-    var p2 = { x: clampRight, y: 0, z: clampFront };
-    var p3 = { x: clampLeft, y: 0, z: clampBack };
-    var p4 = { x: clampRight, y: 0, z: clampBack };
-    var retDist1 = distancetoline(p1, p2, cg);
-    var retDist2 = distancetoline(p2, p4, cg);
-    var retDist3 = distancetoline(p4, p3, cg);
-    var retDist4 = distancetoline(p3, p1, cg);
-    */
-    //  clampFront = -0.10;
-    //  clampBack = 0.17;
-    //  clampLeft = -0.50;
-    //  clampRight = 0.50;
-    
-
     desiredCg = dampenCgMovement(cg);
-    /*
-    if (cg.z < 0.0) {
-        var inputFront;
-        inputFront = Math.abs(distanceFromCenterZ / clampFront);
-        var scaleFrontNew = slope(inputFront);
-        desiredCg.z = scaleFrontNew * clampFront;
-    } else {
-        //  cg.z > 0.0
-        var inputBack;
-        inputBack = Math.abs(distanceFromCenterZ / clampBack);
-        var scaleBackNew = slope(inputBack);
-        desiredCg.z = scaleBackNew * clampBack;
-    }
-
-    if (retDist2 < retDist4) {
-        var inputRight;
-        inputRight = Math.abs(distanceFromCenterX / clampRight);
-        var scaleRightNew = slope(inputRight);
-        desiredCg.x = scaleRightNew * clampRight;
-    } else {
-        //  left of center
-        var inputLeft;
-        inputLeft = Math.abs(distanceFromCenterX / clampLeft);
-        var scaleLeftNew = slope(inputLeft);
-        desiredCg.x = scaleLeftNew * clampLeft;
-    }
-    */
+    
     cg.y = FLOOR_Y;
 
     //  after the dampening above it might be right to clamp the desiredcg to the edge of the base
@@ -521,43 +505,13 @@ function update(dt) {
         drawBase(base);
     }
 
-    //   compute hips position to maintain desiredCg
-    var HIPS_MASS = 40;
-    var totalMass = JOINT_MASSES.reduce(function (accum, obj) {
-        return accum + obj.mass;
-    }, 0);
-    var temp1 = Vec3.subtract(Vec3.multiply(totalMass + HIPS_MASS, desiredCg),
-                              Vec3.multiply(JOINT_MASSES[0].mass, JOINT_MASSES[0].pos));
-    var temp2 = Vec3.subtract(temp1,
-                              Vec3.multiply(JOINT_MASSES[1].mass, JOINT_MASSES[1].pos));
-    var temp3 = Vec3.subtract(temp2,
-                              Vec3.multiply(JOINT_MASSES[2].mass, JOINT_MASSES[2].pos));
-    var temp4 = Vec3.multiply(1 / HIPS_MASS, temp3);
-
-
-    var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
     var currentHeadPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-    var currentNeckPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Neck"));
-    var tposeNeckPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Neck"));
-    var tposeHeadPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-    var tposeHipsPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-
-    var xzDiff = { x: (currentHeadPos.x - temp4.x), y: 0, z: (currentHeadPos.z - temp4.z) };
-    var headMinusHipXz = Vec3.length(xzDiff);
-
-    var headHipDefault = Vec3.length(Vec3.subtract(tposeHeadPos, tposeHipsPos));
-
-    var hipHeight = Math.sqrt((headHipDefault * headHipDefault) - (headMinusHipXz * headMinusHipXz));
-
-    temp4.y = (currentHeadPos.y - hipHeight);
-    if (temp4.y > tposeHipsPos.y) {
-        temp4.y = 0.0;
-    }
+    var localHipsPos = computeCounterBalance(desiredCg);
 
     var globalPosRoot = MyAvatar.position;
     var globalRotRoot = Quat.normalize(MyAvatar.orientation);
     var inverseGlobalRotRoot = Quat.normalize(Quat.inverse(globalRotRoot));
-    var globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(globalRotRoot, temp4));
+    var globalPosHips = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(globalRotRoot, localHipsPos));
     var unRotatedHipsPosition;
 
     if (!MyAvatar.isRecenteringHorizontally()) {
@@ -565,61 +519,30 @@ function update(dt) {
         filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosHips, 0.1);
         unRotatedHipsPosition = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
         hipsPosition = Vec3.multiplyQbyV(ROT_Y180, unRotatedHipsPosition);
-        print("global hips standing " + globalPosHips.x + " " + globalPosHips.y + " " + globalPosHips.z);
-        print("hips during standing " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
-        print("root during standing " + globalPosRoot.x + " " + globalPosRoot.y + " " + globalPosRoot.z);
-        print("filtered hips during standing " + filteredHipsPosition.x + " " + filteredHipsPosition.y + " " + filteredHipsPosition.z);
-        //  var globalPosHead = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(globalRotRoot, currentheadPos));
-        //  var globalOffsetHeadHips = Vec3.multiplyQbyV(globalRotRoot, headhipoffset);
-        //  hipsUnderHead = Vec3.subtract(globalPosHead, globalOffsetHeadHips);
-        //  DebugDraw.addMarker("hipsunder", IDENT_QUAT, hipsUnderHead, GREEN);
-
     } else {
-
         //  DebugDraw.addMarker("hipsunder", IDENT_QUAT, hipsUnderHead, GREEN);
         filteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosHips, 0.1);
-        //  if the hips are moving away from the head in world space then leave them where they are.
-        //  var newFilteredHipsPosition = Vec3.mix(filteredHipsPosition, globalPosRoot, 0.04);
-        //  var globalPosHead = Vec3.sum(globalPosRoot, Vec3.multiplyQbyV(globalRotRoot, currentheadPos));
-        //  var distanceFromHeadToCurrentFilteredHipsPosition = Vec3.length(Vec3.subtract(globalPosHead, filteredHipsPosition));
-        //  var distanceFromHeadToNewFilteredHipsPosition = Vec3.length(Vec3.subtract(globalPosHead, newFilteredHipsPosition));
-        //  if (distanceFromHeadToCurrentFilteredHipsPosition > distanceFromHeadToNewFilteredHipsPosition) {
-        //      filteredHipsPosition = newFilteredHipsPosition;
-        //  }
-        //  otherwise leave the filtered hips where they are.
-        
         unRotatedHipsPosition = Vec3.multiplyQbyV(inverseGlobalRotRoot, Vec3.subtract(filteredHipsPosition, globalPosRoot));
         hipsPosition = Vec3.multiplyQbyV(ROT_Y180, unRotatedHipsPosition);
-        print("global hips during step " + globalPosHips.x + " " + globalPosHips.y + " " + globalPosHips.z);
-        print("hips during step " + hipsPosition.x + " " + hipsPosition.y + " " + hipsPosition.z);
-        print("root during step " + globalPosRoot.x + " " + globalPosRoot.y + " " + globalPosRoot.z);
-        print("filtered hips during step " + filteredHipsPosition.x + " " + filteredHipsPosition.y + " " + filteredHipsPosition.z);
-        //  print("inverseGlobalRotRoot " + inverseGlobalRotRoot.x +" "+  inverseGlobalRotRoot.y + " " + inverseGlobalRotRoot.z + " " + inverseGlobalRotRoot.w);
-        
     }
-
 
     var newYaxisHips = Vec3.normalize(Vec3.subtract(currentHeadPos, unRotatedHipsPosition));
     var forward = { x: 0.0, y: 0.0, z: 1.0 };
+
     //  arms hip rotation is sent from the step script
     var oldZaxisHips = Vec3.normalize(Vec3.multiplyQbyV(armsHipRotation, forward));
- 
     var newXaxisHips = Vec3.normalize(Vec3.cross(newYaxisHips, oldZaxisHips));
     var newZaxisHips = Vec3.normalize(Vec3.cross(newXaxisHips, newYaxisHips));
 
     //  var beforeHips = MyAvatar.getAbsoluteJointRotationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-
     var left = { x: newXaxisHips.x, y: newXaxisHips.y, z: newXaxisHips.z, w: 0.0 };
     var up = { x: newYaxisHips.x, y: newYaxisHips.y, z: newYaxisHips.z, w: 0.0 };
     var view = { x: newZaxisHips.x, y: newZaxisHips.y, z: newZaxisHips.z, w: 0.0 };
 
     var translation = { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
-
     var newRotHips = Mat4.createFromColumns(left, up, view, translation);
-
     var finalRot = Mat4.extractRotation(newRotHips);
-    
-
+   
     hipsRotation = Quat.multiply(ROT_Y180, finalRot);
     print("final rot" + finalRot.x + " "+ finalRot.y + " "+ finalRot.z +" "+ finalRot.w)
 
