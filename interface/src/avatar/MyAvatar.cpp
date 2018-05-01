@@ -2825,6 +2825,120 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     return createMatFromQuatAndPos(headOrientationYawOnly, bodyPos);
 }
 
+float slope(float num) {
+    float constantK = 1.0;
+    return 1 - (1 / (1 + constantK * num));
+}
+
+glm::vec3 dampenCgMovement(glm::vec3 rawCg) {
+
+    float distanceFromCenterZ = rawCg.z;
+    float distanceFromCenterX = rawCg.x;
+
+    float clampFront = -0.10f;
+    float clampBack = 0.17f;
+    float clampLeft = -0.50f;
+    float clampRight = 0.50f;
+
+    glm::vec3 dampedCg = {0.0f,0.0f,0.0f};
+
+    if (rawCg.z < 0.0) {
+        float inputFront;
+        inputFront = fabs(distanceFromCenterZ / clampFront);
+        float scaleFrontNew = slope(inputFront);
+        dampedCg.z = scaleFrontNew * clampFront;
+    } else {
+        //  cg.z > 0.0
+        float inputBack;
+        inputBack = fabs(distanceFromCenterZ / clampBack);
+        float scaleBackNew = slope(inputBack);
+        dampedCg.z = scaleBackNew * clampBack;
+    }
+
+    if (rawCg.x > 0.0) {
+        float inputRight;
+        inputRight = fabs(distanceFromCenterX / clampRight);
+        float scaleRightNew = slope(inputRight);
+        dampedCg.x = scaleRightNew * clampRight;
+    } else {
+        //  left of center
+        float inputLeft;
+        inputLeft = fabs(distanceFromCenterX / clampLeft);
+        float scaleLeftNew = slope(inputLeft);
+        dampedCg.x = scaleLeftNew * clampLeft;
+    }
+    return dampedCg;
+}
+/*
+glm::vec3 computeCg() {
+    // point mass.
+    int n = JOINT_MASSES.length;
+    glm::vec3 moments = { 0.0f, 0.0f, 0.0f };
+    float masses = 0.0f;
+    for (int i = 0; i < n; i++) {
+        glm::vec3 pos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex(JOINT_MASSES[i].joint));
+        JOINT_MASSES[i].pos = pos;
+        moments = Vec3.sum(moments, Vec3.multiply(JOINT_MASSES[i].mass, pos));
+        masses += JOINT_MASSES[i].mass;
+    }
+    return Vec3.multiply(1 / masses, moments);
+}
+*/
+/*
+glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) {
+
+    struct jointMass {
+        QString name;
+        float weight;
+        glm::vec3 position;
+    } cgMasses[3];
+    
+    cgMasses[0].name = "Head";
+    cgMasses[0].weight = 20.0f;
+    cgMasses[0].position = { 0.0f, 0.0f, 0.0f };
+    cgMasses[1].name = "LeftHand";
+    cgMasses[1].weight = 2.0f;
+    cgMasses[1].position = { 0.0f, 0.0f, 0.0f };
+    cgMasses[2].name = "RightHand";
+    cgMasses[2].weight = 2.0f;
+    cgMasses[2].position = { 0.0f, 0.0f, 0.0f };
+
+    float hipsMass = 40.0f;
+    float totalMass = 0.0f;
+    glm::vec3 sumOfMoments = { 0.0f, 0.0f, 0.0f };
+    for (jointMass jnt : cgMasses) {
+        totalMass += jnt.weight;
+        jnt.position = MyAvatar.getAbsoluteJointTranslationInObjectFrame(jnt.name);
+        sumOfMoments += cgMasses[i].weight * cgMasses[i].position;
+    }
+    
+    //   compute hips position to maintain desiredCg
+
+    glm::vec3 temp1 = ((totalMass + hipsMass)*desiredCgPos) -  cgMasses[0].position * cgMasses[0].weight;
+    glm::vec3 temp2 = temp1 - cgMasses[1].weight * cgMasses[1].position;
+    glm::vec3 temp3 = temp2 - cgMasses[2].weight * cgMasses[2].position;
+    glm::vec3 temp4 = (1.0f / HIPS_MASS) * temp3;
+
+
+    glm::vec3 currentHead = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+    glm::vec3 tposeHead = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+    glm::vec3 tposeHips = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
+
+    glm::vec3 xzDiff = {(currentHead.x - temp4.x), 0.0f, (currentHead.z - temp4.z)};
+    float headMinusHipXz = glm::length(xzDiff);
+
+    float headHipDefault = glm::length(tposeHead - tposeHips);
+
+    float hipHeight = sqrt((headHipDefault * headHipDefault) - (headMinusHipXz * headMinusHipXz));
+
+    temp4.y = (currentHead.y - hipHeight);
+    if (temp4.y > tposeHips.y) {
+        temp4.y = 0.0;
+    }
+    return temp4;
+}
+
+*/
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     //implement the cg code here.
     glm::vec3 headPosition;

@@ -388,14 +388,6 @@ function distancetoline(p1,p2,cg) {
     return numerator/denominator;   
 }
 
-function myTanh(num) {
-    return (Math.exp(2 * num) - 1) / (Math.exp(2 * num) + 1);
-}
-
-function dampedSin(num) {  
-    return ( Math.exp((-1.7)*num) * Math.cos((0.2)*Math.PI*num ));
-}
-
 function isLeft(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
 }
