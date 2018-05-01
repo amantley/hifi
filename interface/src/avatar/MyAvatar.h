@@ -105,6 +105,9 @@ class MyAvatar : public Avatar {
      *     by 30cm. <em>Read-only.</em>
      * @property {Pose} rightHandTipPose - The pose of the right hand as determined by the hand controllers, with the position
      *     by 30cm. <em>Read-only.</em>
+     * @property {boolean} centerOfGravityModelEnabled=true - If <code>true</code> then the avatar hips are placed according to the center of
+     *     gravity model that balance the center of gravity over the base of support of the feet.  Setting the value <code>false</code> 
+     *     will result in the default behaviour where the hips are placed under the head.
      * @property {boolean} hmdLeanRecenterEnabled=true - If <code>true</code> then the avatar is re-centered to be under the 
      *     head's position. In room-scale VR, this behavior is what causes your avatar to follow your HMD as you walk around 
      *     the room. Setting the value <code>false</code> is useful if you want to pin the avatar to a fixed position.
@@ -199,6 +202,7 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(float energy READ getEnergy WRITE setEnergy)
     Q_PROPERTY(bool isAway READ getIsAway WRITE setAway)
 
+    Q_PROPERTY(bool centerOfGravityModelEnabled READ getCenterOfGravityModelEnabled WRITE setCenterOfGravityModelEnabled)
     Q_PROPERTY(bool hmdLeanRecenterEnabled READ getHMDLeanRecenterEnabled WRITE setHMDLeanRecenterEnabled)
     Q_PROPERTY(bool collisionsEnabled READ getCollisionsEnabled WRITE setCollisionsEnabled)
     Q_PROPERTY(bool characterControllerEnabled READ getCharacterControllerEnabled WRITE setCharacterControllerEnabled)
@@ -480,6 +484,17 @@ public:
      */
     Q_INVOKABLE QString getDominantHand() const { return _dominantHand; }
 
+    /**jsdoc
+    * @function MyAvatar.setCenterOfGravityModelEnabled
+    * @param {boolean} enabled
+    */
+    Q_INVOKABLE void setCenterOfGravityModelEnabled(bool value) { _centerOfGravityModelEnabled = value; }
+    /**jsdoc
+    * @function MyAvatar.getCenterOfGravityModelEnabled
+    * @returns {boolean}
+    */
+    Q_INVOKABLE bool getCenterOfGravityModelEnabled() const { return _centerOfGravityModelEnabled; }
+
 
     /**jsdoc
      * @function MyAvatar.setHMDLeanRecenterEnabled
@@ -564,6 +579,7 @@ public:
      */
     Q_INVOKABLE void triggerRotationRecenter();
 
+
     /**jsdoc
     *The isRecenteringHorizontally function returns true if MyAvatar
     *is translating the root of the Avatar to keep the center of gravity under the head.
@@ -572,6 +588,7 @@ public:
     */
 
     Q_INVOKABLE bool isRecenteringHorizontally() const;
+
 
     eyeContactTarget getEyeContactTarget();
 
@@ -968,6 +985,11 @@ public:
     // derive avatar body position and orientation from the current HMD Sensor location.
     // results are in HMD frame
     glm::mat4 deriveBodyFromHMDSensor() const;
+
+    // derive avatar body position and orientation from using the current HMD Sensor location in relation to the previous
+    // location of the base of support of the avatar.
+    // results are in HMD frame
+    glm::mat4 deriveBodyUsingCgModel() const;
 
     /**jsdoc
      * @function MyAvatar.isUp
@@ -1548,6 +1570,7 @@ private:
     std::map<controller::Action, controller::Pose> _controllerPoseMap;
     mutable std::mutex _controllerPoseMapMutex;
 
+    bool _centerOfGravityModelEnabled { false };
     bool _hmdLeanRecenterEnabled { true };
     bool _sprint { false };
 
