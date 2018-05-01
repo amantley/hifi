@@ -2884,8 +2884,8 @@ glm::vec3 computeCg() {
     return Vec3.multiply(1 / masses, moments);
 }
 */
-/*
-glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) {
+
+glm::vec3 MyAvatar::computeCounterBalance(glm::vec3 desiredCgPos) const {
 
     struct jointMass {
         QString name;
@@ -2903,13 +2903,24 @@ glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) {
     cgMasses[2].weight = 2.0f;
     cgMasses[2].position = { 0.0f, 0.0f, 0.0f };
 
+    //int leftHandIndex = _skeletonModel->getRig().indexOfJoint("LeftHand");
+    //int rightHandIndex = _skeletonModel->getRig().indexOfJoint("RightHand");
+    //int headIndex = _skeletonModel->getRig().indexOfJoint("Head");
+    //if (leftHandIndex >= 0) && (rightHandIndex >= 0) && (headIndex >= 0) {
+    //auto leftHandPos = getAbsoluteJointTranslationInObjectFrame(leftHandIndex);
+    //auto rightHandPos = getAbsoluteJointTranslationInObjectFrame(rightHandIndex);
+    //auto headPos = getAbsoluteJointTranslationInObjectFrame(headIndex);
+    //}
+
     float hipsMass = 40.0f;
     float totalMass = 0.0f;
     glm::vec3 sumOfMoments = { 0.0f, 0.0f, 0.0f };
+    int index = 0;
     for (jointMass jnt : cgMasses) {
         totalMass += jnt.weight;
-        jnt.position = MyAvatar.getAbsoluteJointTranslationInObjectFrame(jnt.name);
-        sumOfMoments += cgMasses[i].weight * cgMasses[i].position;
+        index = _skeletonModel->getRig().indexOfJoint(jnt.name);
+        jnt.position = getAbsoluteJointTranslationInObjectFrame(index);
+        sumOfMoments += jnt.weight * jnt.position;
     }
     
     //   compute hips position to maintain desiredCg
@@ -2917,12 +2928,12 @@ glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) {
     glm::vec3 temp1 = ((totalMass + hipsMass)*desiredCgPos) -  cgMasses[0].position * cgMasses[0].weight;
     glm::vec3 temp2 = temp1 - cgMasses[1].weight * cgMasses[1].position;
     glm::vec3 temp3 = temp2 - cgMasses[2].weight * cgMasses[2].position;
-    glm::vec3 temp4 = (1.0f / HIPS_MASS) * temp3;
+    glm::vec3 temp4 = (1.0f / hipsMass) * temp3;
 
 
-    glm::vec3 currentHead = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-    glm::vec3 tposeHead = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-    glm::vec3 tposeHips = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
+    glm::vec3 currentHead = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
+    glm::vec3 tposeHead = getAbsoluteDefaultJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
+    glm::vec3 tposeHips = getAbsoluteDefaultJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Hips"));
 
     glm::vec3 xzDiff = {(currentHead.x - temp4.x), 0.0f, (currentHead.z - temp4.z)};
     float headMinusHipXz = glm::length(xzDiff);
@@ -2938,7 +2949,7 @@ glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) {
     return temp4;
 }
 
-*/
+
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     //implement the cg code here.
     glm::vec3 headPosition;

@@ -986,6 +986,8 @@ public:
     // results are in HMD frame
     glm::mat4 deriveBodyFromHMDSensor() const;
 
+    glm::vec3 computeCounterBalance(glm::vec3 desiredCgPos) const;
+
     // derive avatar body position and orientation from using the current HMD Sensor location in relation to the previous
     // location of the base of support of the avatar.
     // results are in HMD frame
