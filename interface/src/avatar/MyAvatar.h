@@ -1555,7 +1555,6 @@ private:
     bool _enableDebugDrawIKConstraints { false };
     bool _enableDebugDrawIKChains { false };
     bool _enableDebugDrawDetailedCollision { false };
-    //bool _toggleHipsFollowing { true };
 
     mutable bool _cauterizationNeedsUpdate; // do we need to scan children and update their "cauterized" state?
 
