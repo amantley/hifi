@@ -2827,35 +2827,42 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
 
 float slope(float num) {
     float constantK = 1.0;
-    return 1.0f - (1.0f / (1.0f + constantK * num));
+    float ret = 1.0f;
+    if (num > 0.0f) {
+        ret = 1.0f - (1.0f / (1.0f + constantK * num));
+    } 
+    return ret;
 }
 
-glm::vec3 dampenCgMovement(glm::vec3 rawCg) {
-
+glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
     float distanceFromCenterZ = rawCg.z;
     float distanceFromCenterX = rawCg.x;
 
-    float clampFront = -0.10f;
-    float clampBack = 0.17f;
-    float clampLeft = -0.50f;
-    float clampRight = 0.50f;
-
+    // scale the base of support
+    float clampFront = -0.10f * baseOfSupportScale;
+    float clampBack = 0.17f * baseOfSupportScale;
+    float clampLeft = -0.50f * baseOfSupportScale;
+    float clampRight = 0.50f * baseOfSupportScale;
     glm::vec3 dampedCg = {0.0f,0.0f,0.0f};
 
+    // find the damped z coord of the cg
     if (rawCg.z < 0.0) {
+        // forward displacement
         float inputFront;
         inputFront = fabs(distanceFromCenterZ / clampFront);
         float scaleFrontNew = slope(inputFront);
         dampedCg.z = scaleFrontNew * clampFront;
     } else {
-        //  cg.z > 0.0
+        //  backwards displacement
         float inputBack;
         inputBack = fabs(distanceFromCenterZ / clampBack);
         float scaleBackNew = slope(inputBack);
         dampedCg.z = scaleBackNew * clampBack;
     }
 
+    // find the damped x coord of the cg
     if (rawCg.x > 0.0) {
+        // right of center
         float inputRight;
         inputRight = fabs(distanceFromCenterX / clampRight);
         float scaleRightNew = slope(inputRight);
@@ -2871,13 +2878,13 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg) {
 }
 
 glm::vec3 MyAvatar::computeCounterBalance() const {
-
     struct jointMass {
         QString name;
         float weight;
         glm::vec3 position;
     } cgMasses[3];
     
+    // init the body part weights
     cgMasses[0].name = "Head";
     cgMasses[0].weight = 20.0f;
     cgMasses[0].position = { 0.0f, 0.0f, 0.0f };
@@ -2887,123 +2894,134 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
     cgMasses[2].name = "RightHand";
     cgMasses[2].weight = 2.0f;
     cgMasses[2].position = { 0.0f, 0.0f, 0.0f };
-
+    
+    // find the current center of gravity position based on head and hand moments
     float hipsMass = 40.0f;
     float totalMass = 0.0f;
     glm::vec3 sumOfMoments = { 0.0f, 0.0f, 0.0f };
-    int index = 0;
     for (int i = 0; i < 3;i++) {
-        totalMass += cgMasses[i].weight;
-        const QString tempName = cgMasses[i].name;
-        cgMasses[i].position = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint(tempName));
+        const QString jointName = cgMasses[i].name;
+        cgMasses[i].position = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint(jointName));
         sumOfMoments += cgMasses[i].weight * cgMasses[i].position;
+        totalMass += cgMasses[i].weight;
     }
-    
     glm::vec3 currentCg = (1 / totalMass ) * sumOfMoments;
     currentCg.y = 0.0f;
-    glm::vec3 desiredCg = dampenCgMovement(currentCg);
 
-    // qCDebug(interfaceapp) << "The current cg is: " << currentCg;
-    // qCDebug(interfaceapp) << "The damped cg is: " << desiredCg;
+    // dampening the center of gravity, in effect, limits the value to the perimeter of the base of support
+    const float humanMedianHeight = 1.65f;
+    float baseScale = 1.0f;
+    if (getUserEyeHeight() > 0.0) {
+        baseScale = getUserEyeHeight() / humanMedianHeight;
+    }
+    glm::vec3 desiredCg = dampenCgMovement(currentCg, baseScale);
 
     // compute hips position to maintain desiredCg
+    glm::vec3 counterBalancedForHead = ((totalMass + hipsMass)*desiredCg) -  (cgMasses[0].position * cgMasses[0].weight);
+    glm::vec3 counterBalancedForLeftHand = counterBalancedForHead - (cgMasses[1].weight * cgMasses[1].position);
+    glm::vec3 counterBalancedForRightHand = counterBalancedForLeftHand - (cgMasses[2].weight * cgMasses[2].position);
+    glm::vec3 counterBalancedCg = (1.0f / hipsMass) * counterBalancedForRightHand;
 
-    glm::vec3 temp1 = ((totalMass + hipsMass)*desiredCg) -  (cgMasses[0].position * cgMasses[0].weight);
-    glm::vec3 temp2 = temp1 - (cgMasses[1].weight * cgMasses[1].position);
-    glm::vec3 temp3 = temp2 - (cgMasses[2].weight * cgMasses[2].position);
-    glm::vec3 temp4 = (1.0f / hipsMass) * temp3;
-
-
+    // find the height of the hips
     glm::vec3 currentHead = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
     glm::vec3 tposeHead = getAbsoluteDefaultJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
     glm::vec3 tposeHips = getAbsoluteDefaultJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Hips"));
-
-    glm::vec3 xzDiff = {(currentHead.x - temp4.x), 0.0f, (currentHead.z - temp4.z)};
+    glm::vec3 xzDiff = {(currentHead.x - counterBalancedCg.x), 0.0f, (currentHead.z - counterBalancedCg.z)};
     float headMinusHipXz = glm::length(xzDiff);
-
     float headHipDefault = glm::length(tposeHead - tposeHips);
-
-    float hipHeight = sqrt((headHipDefault * headHipDefault) - (headMinusHipXz * headMinusHipXz));
-
-    temp4.y = (currentHead.y - hipHeight);
-    if (temp4.y > tposeHips.y) {
-        temp4.y = tposeHips.y;
+    float hipHeight = 0.0f;
+    if (headHipDefault > headMinusHipXz) {
+        hipHeight = sqrt((headHipDefault * headHipDefault) - (headMinusHipXz * headMinusHipXz));
     }
-    //  qCDebug(interfaceapp) << "Temp4 is: " << temp4;
-    return temp4;
-    
+    counterBalancedCg.y = (currentHead.y - hipHeight);
+
+    // this is to be sure that the feet don't lift off the floor.
+    if (counterBalancedCg.y > tposeHips.y) {
+        counterBalancedCg.y = tposeHips.y;
+    }
+    return counterBalancedCg;
 }
 
 glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
+    glm::vec3 spineVec = curHead - hipPos;
+    glm::quat finalRot = Quaternions::IDENTITY;
 
-    glm::vec3 newYaxisHips = glm::normalize(curHead - hipPos);
-    qCDebug(interfaceapp) << "new Y axis hips:  " << newYaxisHips;
-    glm::vec3 forward = {0.0f, 0.0f, 1.0f};
-    //to do: we will use a rotation from the torso eventually to set this.
-    glm::quat armsHipRotation = {0.0f,1.0f,0.0f,0.0f};
+    if (spineVec.y > 0.0f) {
+        glm::vec3 newYaxisHips = glm::normalize(spineVec);
+        glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
+        // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
+        glm::quat avatarToHipRotation(0.0f, 0.0f, 1.0f, 0.0f);
+        glm::vec3 oldZaxisHips = glm::normalize(avatarToHipRotation*forward);
+        glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
+        glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
 
-    //  arms hip rotation is sent from the step script
-    glm::vec3 oldZaxisHips = glm::normalize(armsHipRotation*forward);
-    qCDebug(interfaceapp) << "old Z axis:  " << oldZaxisHips;
+        // create mat4 with the new axes
+        glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
+        glm::vec4 up = { newYaxisHips.x, newYaxisHips.y, newYaxisHips.z, 0.0f };
+        glm::vec4 view = { newZaxisHips.x, newZaxisHips.y, newZaxisHips.z, 0.0f };
+        glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::mat4 newRotHips(left, up, view, translation);
+        finalRot = glm::toQuat(newRotHips);
 
-    glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
-    qCDebug(interfaceapp) << "new X axis:  " << newXaxisHips;
-    glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
-    qCDebug(interfaceapp) << "new Z axis:  " << newZaxisHips;
+    } else if (spineVec.y < 0.0f) {
+        glm::vec3 newYaxisHips = glm::normalize(-spineVec);
+        glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
+        // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
+        glm::quat avatarToHipRotation(1.0f, 0.0f, 0.0f, 0.0f);
+        glm::vec3 oldZaxisHips = glm::normalize(avatarToHipRotation*forward);
+        glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
+        glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
 
-    //  var beforeHips = MyAvatar.getAbsoluteJointRotationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-    glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
-    glm::vec4 up = { newYaxisHips.x, newYaxisHips.y, newYaxisHips.z, 0.0f };
-    glm::vec4 view = { newZaxisHips.x, newZaxisHips.y, newZaxisHips.z, 0.0f };
+        // create mat4 with the new axes
+        glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
+        glm::vec4 up = { newYaxisHips.x, newYaxisHips.y, newYaxisHips.z, 0.0f };
+        glm::vec4 view = { newZaxisHips.x, newZaxisHips.y, newZaxisHips.z, 0.0f };
+        glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::mat4 newRotHips(left, up, view, translation);
+        finalRot = glm::toQuat(newRotHips);
 
-    glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
-    //to do: fix these mat4 functions
-    
-    glm::mat4 newRotHips(left, up, view, translation);
-    //also possible return glm::quat_cast(newRotHips);
-    glm::quat finalRot = glm::toQuat(newRotHips);
+    } else {
+        //y equals zero.
+        if (glm::length(spineVec) > 0.0f) {
+            glm::vec3 newYaxisHips = glm::normalize(spineVec);
+            glm::vec3 forward = { 0.0f, -1.0f, 0.0f };
+            glm::vec3 oldZaxisHips = forward;
+            glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
+            glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
 
-    qCDebug(interfaceapp) << "final rot " << finalRot;
-
-    //  180 is the change of basis of the avatar coordinate system
-    glm::quat hipsRotation =  finalRot * Quaternions::Y_180;
+            // create mat4 with the new axes
+            glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
+            glm::vec4 up = { newYaxisHips.x, newYaxisHips.y, newYaxisHips.z, 0.0f };
+            glm::vec4 view = { newZaxisHips.x, newZaxisHips.y, newZaxisHips.z, 0.0f };
+            glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            glm::mat4 newRotHips(left, up, view, translation);
+            glm::quat finalRot = glm::toQuat(newRotHips);
+        }
+        // otherwise, head and hips are equal so leave finalRot identity
+    }
+    glm::quat hipsRotation = finalRot * Quaternions::Y_180;
     return hipsRotation;
+    return Quaternions::IDENTITY;
 }
 
 
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
-    // implement the cg code here.
-    // to do: this needs to be in sensor frame.
-    // also to do: handle yaw orientation of the hips here.
 
-    glm::vec3 headPosition;
-    auto headPose = getControllerPoseInSensorFrame(controller::Action::HEAD);
-    if (headPose.isValid()) {
-        headPosition = headPose.translation;
-    }
-
+    // to do: handle yaw orientation of the hips here.
     glm::mat4 worldToSensorMat = glm::inverse(getSensorToWorldMatrix());
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
     glm::mat4 avatarToSensorMat = worldToSensorMat * avatarToWorldMat;
-
-    qCDebug(interfaceapp) << "avatar to world " << glmExtractRotation(avatarToWorldMat);
-    qCDebug(interfaceapp) << "world to sensor " << glmExtractRotation(worldToSensorMat);
-    qCDebug(interfaceapp) << "avatar to sensor " << glmExtractRotation(avatarToSensorMat);
-    qCDebug(interfaceapp) << "head pose in sensor frame " << headPose.rotation;
     
-    glm::vec3 testPos = { 0.0f,0.0f,-1.0f };
+    // get the new center of gravity
     const glm::vec3 cgHipsPosition = computeCounterBalance();
     glm::vec3 hipsPositionFinal = transformPoint(avatarToSensorMat, cgHipsPosition );
-    glm::quat headOrientation(0.0f,0.0f,0.0f,1.0f);
 
+    // scale the new cg based on user height relative to avatar height
     float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
-    // qCDebug(interfaceapp) << "The derived position of the hips is:  ------------------>" << hipsPositionFinal;
-    // qCDebug(interfaceapp) << "The avatar to user scale factor is: " << invSensorToWorldScale;
     glm::vec3 headPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
 
+    //find the new hips rotation using the new head-hips axis as the up axis
     glm::quat newHipsRotation = computeNewHipsRotation( headPositionLocal, cgHipsPosition );
-    //qCDebug(interfaceapp) << "the new hips rotation in derive body cg is:                            >>" << newHipsRotation;
-
     glm::quat hipsToSensor = glmExtractRotation(avatarToSensorMat)*newHipsRotation;
     
     return createMatFromQuatAndPos(hipsToSensor, (invSensorToWorldScale*hipsPositionFinal));
