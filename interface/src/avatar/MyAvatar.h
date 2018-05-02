@@ -1571,7 +1571,7 @@ private:
     std::map<controller::Action, controller::Pose> _controllerPoseMap;
     mutable std::mutex _controllerPoseMapMutex;
 
-    bool _centerOfGravityModelEnabled { false };
+    bool _centerOfGravityModelEnabled { true };
     bool _hmdLeanRecenterEnabled { true };
     bool _sprint { false };
 

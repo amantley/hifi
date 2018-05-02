@@ -155,8 +155,6 @@ function initCg() {
         return result;
     }, ANIM_VARS);
 
-
-
     Messages.subscribe(MESSAGE_CHANNEL);
     Messages.messageReceived.connect(messageHandler);
     Script.update.connect(update);
@@ -191,9 +189,6 @@ function messageHandler(channel, messageString, senderID) {
     armsHipRotation = Quat.multiply(ROT_Y180,hipquat);
     
 }
-
-
-
 
 function getFeetAndToeNames() {
 
@@ -499,6 +494,8 @@ function update(dt) {
 
     var currentHeadPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
     var localHipsPos = computeCounterBalance(desiredCg);
+    //  print("current hips " + cg.x + " " + cg.y + " " + cg.z);
+    //  print("dampened hips " + desiredCg.x + " " + desiredCg.y + " " + desiredCg.z)
 
     var globalPosRoot = MyAvatar.position;
     var globalRotRoot = Quat.normalize(MyAvatar.orientation);
@@ -536,7 +533,7 @@ function update(dt) {
     var finalRot = Mat4.extractRotation(newRotHips);
    
     hipsRotation = Quat.multiply(ROT_Y180, finalRot);
-    print("final rot" + finalRot.x + " "+ finalRot.y + " "+ finalRot.z +" "+ finalRot.w)
+    print("final rot" + finalRot.x + " " + finalRot.y + " " + finalRot.z + " " + finalRot.w);
 
     if (DEBUGDRAWING) {
         DebugDraw.addMyAvatarMarker("hipsPos", IDENT_QUAT, hipsPosition, RED);

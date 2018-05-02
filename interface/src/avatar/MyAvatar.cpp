@@ -2903,10 +2903,10 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
     currentCg.y = 0.0f;
     glm::vec3 desiredCg = dampenCgMovement(currentCg);
 
-    qCDebug(interfaceapp) << "The current cg is: " << currentCg;
-    qCDebug(interfaceapp) << "The damped cg is: " << desiredCg;
+    // qCDebug(interfaceapp) << "The current cg is: " << currentCg;
+    // qCDebug(interfaceapp) << "The damped cg is: " << desiredCg;
 
-    //   compute hips position to maintain desiredCg
+    // compute hips position to maintain desiredCg
 
     glm::vec3 temp1 = ((totalMass + hipsMass)*desiredCg) -  (cgMasses[0].position * cgMasses[0].weight);
     glm::vec3 temp2 = temp1 - (cgMasses[1].weight * cgMasses[1].position);
@@ -2929,7 +2929,7 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
     if (temp4.y > tposeHips.y) {
         temp4.y = tposeHips.y;
     }
-    qCDebug(interfaceapp) << "Temp4 is: " << temp4;
+    //  qCDebug(interfaceapp) << "Temp4 is: " << temp4;
     return temp4;
     
 }
@@ -2937,14 +2937,19 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
 glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
 
     glm::vec3 newYaxisHips = glm::normalize(curHead - hipPos);
+    qCDebug(interfaceapp) << "new Y axis hips:  " << newYaxisHips;
     glm::vec3 forward = {0.0f, 0.0f, 1.0f};
     //to do: we will use a rotation from the torso eventually to set this.
-    glm::quat armsHipRotation = {0.0f,0.0f,0.0f,1.0f};
+    glm::quat armsHipRotation = {0.0f,1.0f,0.0f,0.0f};
 
     //  arms hip rotation is sent from the step script
     glm::vec3 oldZaxisHips = glm::normalize(armsHipRotation*forward);
+    qCDebug(interfaceapp) << "old Z axis:  " << oldZaxisHips;
+
     glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
+    qCDebug(interfaceapp) << "new X axis:  " << newXaxisHips;
     glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
+    qCDebug(interfaceapp) << "new Z axis:  " << newZaxisHips;
 
     //  var beforeHips = MyAvatar.getAbsoluteJointRotationInObjectFrame(MyAvatar.getJointIndex("Hips"));
     glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
@@ -2953,11 +2958,15 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
 
     glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
     //to do: fix these mat4 functions
-    Mat4 amat;
+    
     glm::mat4 newRotHips(left, up, view, translation);
+    //also possible return glm::quat_cast(newRotHips);
     glm::quat finalRot = glm::toQuat(newRotHips);
 
-    glm::quat hipsRotation = finalRot;// Quaternions::Y_180*finalRot;
+    qCDebug(interfaceapp) << "final rot " << finalRot;
+
+    //  180 is the change of basis of the avatar coordinate system
+    glm::quat hipsRotation =  finalRot * Quaternions::Y_180;
     return hipsRotation;
 }
 
@@ -2976,16 +2985,24 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::mat4 worldToSensorMat = glm::inverse(getSensorToWorldMatrix());
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
     glm::mat4 avatarToSensorMat = worldToSensorMat * avatarToWorldMat;
+
+    qCDebug(interfaceapp) << "avatar to world " << glmExtractRotation(avatarToWorldMat);
+    qCDebug(interfaceapp) << "world to sensor " << glmExtractRotation(worldToSensorMat);
+    qCDebug(interfaceapp) << "avatar to sensor " << glmExtractRotation(avatarToSensorMat);
+    qCDebug(interfaceapp) << "head pose in sensor frame " << headPose.rotation;
+    
     glm::vec3 testPos = { 0.0f,0.0f,-1.0f };
-    glm::vec3 hipsPositionFinal = transformPoint(avatarToSensorMat, computeCounterBalance());
+    const glm::vec3 cgHipsPosition = computeCounterBalance();
+    glm::vec3 hipsPositionFinal = transformPoint(avatarToSensorMat, cgHipsPosition );
     glm::quat headOrientation(0.0f,0.0f,0.0f,1.0f);
 
     float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
-    qCDebug(interfaceapp) << "The derived position of the hips is:  ------------------>" << hipsPositionFinal;
-    qCDebug(interfaceapp) << "The avatar to user scale factor is: " << invSensorToWorldScale;
+    // qCDebug(interfaceapp) << "The derived position of the hips is:  ------------------>" << hipsPositionFinal;
+    // qCDebug(interfaceapp) << "The avatar to user scale factor is: " << invSensorToWorldScale;
+    glm::vec3 headPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
 
-    glm::quat newHipsRotation = ( headPosition, (invSensorToWorldScale*hipsPositionFinal) );
-    qCDebug(interfaceapp) << "the new hips rotation in derive body cg is: " << newHipsRotation;
+    glm::quat newHipsRotation = computeNewHipsRotation( headPositionLocal, cgHipsPosition );
+    //qCDebug(interfaceapp) << "the new hips rotation in derive body cg is:                            >>" << newHipsRotation;
 
     glm::quat hipsToSensor = glmExtractRotation(avatarToSensorMat)*newHipsRotation;
     
