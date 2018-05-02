@@ -34,7 +34,7 @@ var DEFAULT_SCRIPTS_COMBINED = [
 ];
 var DEFAULT_SCRIPTS_SEPARATE = [
     "system/controllers/controllerScripts.js",
-    //"developer/step.js",
+    "developer/step.js",
     //"developer/cg_lean.js"
     //"system/chat.js"
 ];

@@ -494,8 +494,6 @@ public:
     * @returns {boolean}
     */
     Q_INVOKABLE bool getCenterOfGravityModelEnabled() const { return _centerOfGravityModelEnabled; }
-
-
     /**jsdoc
      * @function MyAvatar.setHMDLeanRecenterEnabled
      * @param {boolean} enabled
@@ -586,7 +584,6 @@ public:
     *isActive(Horizontal) is returned.
     *@function MyAvatar.isRecenteringHorizontally
     */
-
     Q_INVOKABLE bool isRecenteringHorizontally() const;
 
 
@@ -1137,16 +1134,15 @@ public slots:
      * @function MyAvatar.updateMotionBehaviorFromMenu
      */
     Q_INVOKABLE void updateMotionBehaviorFromMenu();
-
-
+    /**jsdoc
+    * @function MyAvatar.setToggleHips
+    * @param {boolean} enabled
+    */
     void setToggleHips(bool followHead);
-
-
     /**jsdoc
      * @function MyAvatar.setEnableDebugDrawDefaultPose
      * @param {boolean} enabled
      */
-
     void setEnableDebugDrawDefaultPose(bool isEnabled);
     /**jsdoc
      * @function MyAvatar.setEnableDebugDrawAnimPose

@@ -1061,13 +1061,11 @@ void MyAvatar::setToggleHips(bool followHead) {
 
 void MyAvatar::FollowHelper::setToggleHipsFollowing(bool followHead) {
     _toggleHipsFollowing = followHead;
-    //qCDebug(interfaceapp) << "the hips following variable is " << _toggleHipsFollowing;
 }
 
 bool MyAvatar::FollowHelper::getToggleHipsFollowing() const {
     return _toggleHipsFollowing;
 }
-
 
 void MyAvatar::setEnableDebugDrawDefaultPose(bool isEnabled) {
     _enableDebugDrawDefaultPose = isEnabled;
@@ -2840,9 +2838,9 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
 
     // scale the base of support
     float clampFront = -0.10f * baseOfSupportScale;
-    float clampBack = 0.17f * baseOfSupportScale;
-    float clampLeft = -0.50f * baseOfSupportScale;
-    float clampRight = 0.50f * baseOfSupportScale;
+    float clampBack  =  0.17f * baseOfSupportScale;
+    float clampLeft  = -0.50f * baseOfSupportScale;
+    float clampRight =  0.50f * baseOfSupportScale;
     glm::vec3 dampedCg = {0.0f,0.0f,0.0f};
 
     // find the damped z coord of the cg
@@ -3265,14 +3263,7 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     const glm::vec3 avatarUpWorld = glm::normalize(followWorldPose.rot()*(Vectors::UP));
     glm::quat resultingSwingInWorld;
     glm::quat resultingTwistInWorld;
-    
-    //const glm::quat testrot = glm::angleAxis((PI/2), glm::vec3(0.0f, 1.0f, 0.0f));
     swingTwistDecomposition(hipsinWorldSpace, avatarUpWorld, resultingSwingInWorld, resultingTwistInWorld);
-
-    //qCDebug(interfaceapp) << "hipsspace in world" << hipsinWorldSpace << "the up axis is: " << avatarUpWorld  << " the twist is " << resultingtwistinworld;
-
-
-    
 
     // remove scale present from sensorToWorldMatrix
     followWorldPose.scale() = glm::vec3(1.0f);
@@ -3280,15 +3271,11 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     if (isActive(Rotation)) {
         if (getToggleHipsFollowing()) {
             //use the hmd reading for the hips follow
-            followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
-            qCDebug(interfaceapp) << "follow the head";
-            
+            followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix); 
         } else {
             //use the hips as changed by the arms azimuth for the hips to follow.
             followWorldPose.rot() = resultingTwistInWorld;
-            qCDebug(interfaceapp) << "follow the hips";
         }
-        //qCDebug(interfaceapp) << "follow world usual hips is: " << followWorldPose.rot();
     }
     if (isActive(Horizontal)) {
         glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
