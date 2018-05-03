@@ -2940,6 +2940,7 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
 
     // this is to be sure that the feet don't lift off the floor.
     if (counterBalancedCg.y > tposeHips.y) {
+        // if the height is higher than default hips, clamp to default hips
         counterBalancedCg.y = tposeHips.y;
     }
     return counterBalancedCg;
@@ -2950,6 +2951,7 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
     glm::quat finalRot = Quaternions::IDENTITY;
 
     if (spineVec.y > 0.0f) {
+
         glm::vec3 newYaxisHips = glm::normalize(spineVec);
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
         // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
@@ -2965,8 +2967,8 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
         glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
         glm::mat4 newRotHips(left, up, view, translation);
         finalRot = glm::toQuat(newRotHips);
-
     } else if (spineVec.y < 0.0f) {
+
         glm::vec3 newYaxisHips = glm::normalize(-spineVec);
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
         // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
@@ -2982,15 +2984,15 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
         glm::vec4 translation = { 0.0f, 0.0f, 0.0f, 1.0f };
         glm::mat4 newRotHips(left, up, view, translation);
         finalRot = glm::toQuat(newRotHips);
-
     } else {
+
         //y equals zero.
         if (glm::length(spineVec) > 0.0f) {
             glm::vec3 newYaxisHips = glm::normalize(spineVec);
             glm::vec3 forward = { 0.0f, -1.0f, 0.0f };
             glm::vec3 oldZaxisHips = forward;
             glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
-            glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
+            glm::vec3 newZaxisHips = oldZaxisHips;
 
             // create mat4 with the new axes
             glm::vec4 left = { newXaxisHips.x, newXaxisHips.y, newXaxisHips.z, 0.0f };
@@ -3004,49 +3006,41 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
     }
     glm::quat hipsRotation = finalRot * Quaternions::Y_180;
     return hipsRotation;
-    return Quaternions::IDENTITY;
 }
 
 void drawBaseOfSupport(float baseOfSupportScale, float footLocal, glm::mat4 avatarToWorld) {
-
-    // scale the base of support
+    // scale the base of support based on user height
     float clampFront = -0.17f * baseOfSupportScale;
     float clampBack = 0.12f * baseOfSupportScale;
     float clampLeft = -0.25f * baseOfSupportScale;
     float clampRight = 0.25f * baseOfSupportScale;
     float floor = footLocal + 0.05f;
 
+    // transform the base of support corners to world space
     glm::vec3 frontRight = transformPoint(avatarToWorld,{ clampRight,floor,clampFront });
     glm::vec3 frontLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampFront });
     glm::vec3 backRight = transformPoint(avatarToWorld, { clampRight,floor,clampBack });
     glm::vec3 backLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampBack });
 
-    
-
-    //test debug draw code here then remove
-    /*
-    const glm::vec3 startLeftBack = { -0.0f, 15.85f, 5.25f };
-    const glm::vec3 startLeftFront = { -0.0f, 15.85f, 8.25f };
-    */
+    // draw the borders
     const glm::vec4 rayColor = { 1.0f, 0.0f, 0.0f, 1.0f };
     DebugDraw::getInstance().drawRay(backLeft, frontLeft, rayColor);
     DebugDraw::getInstance().drawRay(backLeft, backRight, rayColor);
     DebugDraw::getInstance().drawRay(backRight, frontRight, rayColor);
     DebugDraw::getInstance().drawRay(frontLeft, frontRight, rayColor);
-
 }
 
 
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
-
-    // to do: handle yaw orientation of the hips here.
     glm::mat4 worldToSensorMat = glm::inverse(getSensorToWorldMatrix());
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
     glm::mat4 avatarToSensorMat = worldToSensorMat * avatarToWorldMat;
 
     if (_enableDebugDrawBaseOfSupport) {
+        const float humanMedianEyeHeight = 1.65f;
+        float scaleBaseOfSupport = getUserEyeHeight() / humanMedianEyeHeight;
         glm::vec3 rightFootPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("RightFoot"));
-        drawBaseOfSupport(1.0f, rightFootPositionLocal.y, avatarToWorldMat);
+        drawBaseOfSupport(scaleBaseOfSupport, rightFootPositionLocal.y, avatarToWorldMat);
     }
 
     // get the new center of gravity
