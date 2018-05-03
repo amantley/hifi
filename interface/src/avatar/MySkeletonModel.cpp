@@ -61,7 +61,7 @@ static AnimPose computeHipsInSensorFrame(MyAvatar* myAvatar, bool isFlying) {
     glm::mat4 avatarToSensorMat = worldToSensorMat * avatarToWorldMat;
 
     // dampen hips rotation, by mixing it with the avatar orientation in sensor space
-    // turning this off for center of gravity model
+    // turning this off for center of gravity model because it is already mixed in there
     if (!(myAvatar->getCenterOfGravityModelEnabled())) {
         const float MIX_RATIO = 0.5f;
         hipsRot = safeLerp(glmExtractRotation(avatarToSensorMat), hipsRot, MIX_RATIO);
