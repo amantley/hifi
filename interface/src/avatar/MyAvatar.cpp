@@ -1067,6 +1067,10 @@ bool MyAvatar::FollowHelper::getToggleHipsFollowing() const {
     return _toggleHipsFollowing;
 }
 
+void MyAvatar::setEnableDebugDrawBaseOfSupport(bool isEnabled) {
+    _enableDebugDrawBaseOfSupport = isEnabled;
+}
+
 void MyAvatar::setEnableDebugDrawDefaultPose(bool isEnabled) {
     _enableDebugDrawDefaultPose = isEnabled;
 
@@ -1195,6 +1199,7 @@ void MyAvatar::loadData() {
 
     setEnableMeshVisible(Menu::getInstance()->isOptionChecked(MenuOption::MeshVisible));
     _follow.setToggleHipsFollowing (Menu::getInstance()->isOptionChecked(MenuOption::ToggleHipsFollowing));
+    setEnableDebugDrawBaseOfSupport(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawBaseOfSupport));
     setEnableDebugDrawDefaultPose(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawDefaultPose));
     setEnableDebugDrawAnimPose(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawAnimPose));
     setEnableDebugDrawPosition(Menu::getInstance()->isOptionChecked(MenuOption::AnimDebugDrawPosition));
@@ -3002,6 +3007,35 @@ glm::quat computeNewHipsRotation(glm::vec3 curHead, glm::vec3 hipPos) {
     return Quaternions::IDENTITY;
 }
 
+void drawBaseOfSupport(float baseOfSupportScale, float footLocal, glm::mat4 avatarToWorld) {
+
+    // scale the base of support
+    float clampFront = -0.17f * baseOfSupportScale;
+    float clampBack = 0.12f * baseOfSupportScale;
+    float clampLeft = -0.25f * baseOfSupportScale;
+    float clampRight = 0.25f * baseOfSupportScale;
+    float floor = footLocal + 0.05f;
+
+    glm::vec3 frontRight = transformPoint(avatarToWorld,{ clampRight,floor,clampFront });
+    glm::vec3 frontLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampFront });
+    glm::vec3 backRight = transformPoint(avatarToWorld, { clampRight,floor,clampBack });
+    glm::vec3 backLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampBack });
+
+    
+
+    //test debug draw code here then remove
+    /*
+    const glm::vec3 startLeftBack = { -0.0f, 15.85f, 5.25f };
+    const glm::vec3 startLeftFront = { -0.0f, 15.85f, 8.25f };
+    */
+    const glm::vec4 rayColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+    DebugDraw::getInstance().drawRay(backLeft, frontLeft, rayColor);
+    DebugDraw::getInstance().drawRay(backLeft, backRight, rayColor);
+    DebugDraw::getInstance().drawRay(backRight, frontRight, rayColor);
+    DebugDraw::getInstance().drawRay(frontLeft, frontRight, rayColor);
+
+}
+
 
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
 
@@ -3009,7 +3043,12 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::mat4 worldToSensorMat = glm::inverse(getSensorToWorldMatrix());
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
     glm::mat4 avatarToSensorMat = worldToSensorMat * avatarToWorldMat;
-    
+
+    if (_enableDebugDrawBaseOfSupport) {
+        glm::vec3 rightFootPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("RightFoot"));
+        drawBaseOfSupport(1.0f, rightFootPositionLocal.y, avatarToWorldMat);
+    }
+
     // get the new center of gravity
     const glm::vec3 cgHipsPosition = computeCounterBalance();
     glm::vec3 hipsPositionFinal = transformPoint(avatarToSensorMat, cgHipsPosition );

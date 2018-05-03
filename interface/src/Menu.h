@@ -30,6 +30,7 @@ namespace MenuOption {
     const QString AddressBar = "Show Address Bar";
     const QString Animations = "Animations...";
     const QString AnimDebugDrawAnimPose = "Debug Draw Animation";
+    const QString AnimDebugDrawBaseOfSupport = "Debug Draw Base of Support";
     const QString AnimDebugDrawDefaultPose = "Debug Draw Default Pose";
     const QString AnimDebugDrawPosition= "Debug Draw Position";
     const QString AskToResetSettings = "Ask To Reset Settings";

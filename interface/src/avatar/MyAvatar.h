@@ -1140,6 +1140,11 @@ public slots:
     */
     void setToggleHips(bool followHead);
     /**jsdoc
+    * @function MyAvatar.setEnableDebugDrawBaseOfSupport
+    * @param {boolean} enabled
+    */
+    void setEnableDebugDrawBaseOfSupport(bool isEnabled);
+    /**jsdoc
      * @function MyAvatar.setEnableDebugDrawDefaultPose
      * @param {boolean} enabled
      */
@@ -1545,6 +1550,7 @@ private:
     bool _prevShouldDrawHead;
     bool _rigEnabled { true };
 
+    bool _enableDebugDrawBaseOfSupport { false };
     bool _enableDebugDrawDefaultPose { false };
     bool _enableDebugDrawAnimPose { false };
     bool _enableDebugDrawHandControllers { false };
