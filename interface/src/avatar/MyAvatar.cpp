@@ -2841,11 +2841,18 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
     float distanceFromCenterZ = rawCg.z;
     float distanceFromCenterX = rawCg.x;
 
-    // scale the base of support
-    float clampFront = DEFAULT_AVATAR_SUPPORT_BASE_FRONT * baseOfSupportScale;
-    float clampBack = DEFAULT_AVATAR_SUPPORT_BASE_BACK * baseOfSupportScale;
-    float clampLeft = DEFAULT_AVATAR_SUPPORT_BASE_LEFT * 2.0f * baseOfSupportScale;
-    float clampRight = DEFAULT_AVATAR_SUPPORT_BASE_RIGHT * 2.0f * baseOfSupportScale;
+    // The dampening scale factors makes the slope function soft clamp the 
+    // cg at the edge of the base of support of the feet, in the lateral and posterior directions.   
+    // In the forward direction we need a different scale because forward is in 
+    // the direction of the hip extensor joint, which means bending usually happens 
+    // well before reaching the edge of the base of support.
+    // The scale of the base of support reflects the size of the user in real life.
+    float forwardDampeningFactor = 0.5f;
+    float lateralAndBackDampeningScaleFactor = 2.0f;
+    float clampFront = DEFAULT_AVATAR_SUPPORT_BASE_FRONT * forwardDampeningFactor * baseOfSupportScale;
+    float clampBack = DEFAULT_AVATAR_SUPPORT_BASE_BACK * lateralAndBackDampeningScaleFactor * baseOfSupportScale;
+    float clampLeft = DEFAULT_AVATAR_SUPPORT_BASE_LEFT * lateralAndBackDampeningScaleFactor * baseOfSupportScale;
+    float clampRight = DEFAULT_AVATAR_SUPPORT_BASE_RIGHT * lateralAndBackDampeningScaleFactor * baseOfSupportScale;
     glm::vec3 dampedCg = {0.0f,0.0f,0.0f};
 
     // find the damped z coord of the cg
@@ -3006,17 +3013,17 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
 
 void drawBaseOfSupport(float baseOfSupportScale, float footLocal, glm::mat4 avatarToWorld) {
     // scale the base of support based on user height
-    float clampFront = (DEFAULT_AVATAR_SUPPORT_BASE_FRONT - 0.05f)  * baseOfSupportScale;
-    float clampBack = (DEFAULT_AVATAR_SUPPORT_BASE_BACK - 0.05F) * baseOfSupportScale;
+    float clampFront = DEFAULT_AVATAR_SUPPORT_BASE_FRONT * baseOfSupportScale;
+    float clampBack = DEFAULT_AVATAR_SUPPORT_BASE_BACK * baseOfSupportScale;
     float clampLeft = DEFAULT_AVATAR_SUPPORT_BASE_LEFT * baseOfSupportScale;
     float clampRight = DEFAULT_AVATAR_SUPPORT_BASE_RIGHT * baseOfSupportScale;
     float floor = footLocal + 0.05f;
 
     // transform the base of support corners to world space
-    glm::vec3 frontRight = transformPoint(avatarToWorld, { clampRight,floor,clampFront });
-    glm::vec3 frontLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampFront });
-    glm::vec3 backRight = transformPoint(avatarToWorld, { clampRight,floor,clampBack });
-    glm::vec3 backLeft = transformPoint(avatarToWorld, { clampLeft,floor,clampBack });
+    glm::vec3 frontRight = transformPoint(avatarToWorld, { clampRight, floor, clampFront });
+    glm::vec3 frontLeft = transformPoint(avatarToWorld, { clampLeft, floor, clampFront });
+    glm::vec3 backRight = transformPoint(avatarToWorld, { clampRight, floor, clampBack });
+    glm::vec3 backLeft = transformPoint(avatarToWorld, { clampLeft, floor, clampBack });
 
     // draw the borders
     const glm::vec4 rayColor = { 1.0f, 0.0f, 0.0f, 1.0f };
@@ -3043,7 +3050,7 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     const glm::quat headOrientationYawOnly = cancelOutRollAndPitch(headOrientation);
     const float MIX_RATIO = 0.15f;
     // here we mix in some of the head yaw into the hip yaw
-    glm::quat hipYawRot = glm::normalize(glm::lerp(glmExtractRotation(avatarToSensorMat), headOrientationYawOnly, MIX_RATIO));
+    glm::quat hipYawRot = Quaternions::IDENTITY;// glm::normalize(glm::lerp(glmExtractRotation(avatarToSensorMat), headOrientationYawOnly, MIX_RATIO));
 
     if (_enableDebugDrawBaseOfSupport) {
         // default height is  ~ 1.64 meters
