@@ -2977,8 +2977,8 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
         glm::vec3 newYaxisHips = glm::normalize(spineVec);
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
         // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
-        glm::quat avatarToHipRotation(0.0f, 0.0f, 1.0f, 0.0f);
-        glm::vec3 oldZaxisHips = glm::normalize(avatarToHipRotation*hipYawRot*forward);
+        glm::quat avatarToHipRotation(1.0f, 0.0f, 0.0f, 0.0f);
+        glm::vec3 oldZaxisHips = glm::normalize(forward);
         glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
         glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
 
@@ -2995,7 +2995,7 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
         // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
         glm::quat avatarToHipRotation(1.0f, 0.0f, 0.0f, 0.0f);
-        glm::vec3 oldZaxisHips = glm::normalize(avatarToHipRotation*hipYawRot*forward);
+        glm::vec3 oldZaxisHips = glm::normalize(forward);
         glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
         glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
 
@@ -3011,7 +3011,7 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
         //y equals zero.
         if (glm::length(spineVec) > 0.0f) {
             glm::vec3 newYaxisHips = glm::normalize(spineVec);
-            glm::vec3 forward = { 0.0f, -1.0f, 0.0f };
+            glm::vec3 forward = { 0.0f, 1.0f, 0.0f };
             glm::vec3 oldZaxisHips = forward;
             glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
             glm::vec3 newZaxisHips = oldZaxisHips;
@@ -3026,7 +3026,7 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
         }
         // otherwise, head and hips are equal so leave finalRot identity
     }
-    glm::quat hipsRotation = finalRot * Quaternions::Y_180;
+    glm::quat hipsRotation = hipYawRot*finalRot;
     return hipsRotation;
 }
 
@@ -3069,10 +3069,13 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     const glm::quat headOrientationYawOnly = cancelOutRollAndPitch(headOrientation);
     const float MIX_RATIO = 0.15f;
     // here we mix in some of the head yaw into the hip yaw
-    glm::quat hipYawRot = Quaternions::IDENTITY;// glm::normalize(glm::lerp(glmExtractRotation(avatarToSensorMat), headOrientationYawOnly, MIX_RATIO));
+    glm::quat hipYawRot = glm::normalize(glm::lerp(glmExtractRotation(avatarToSensorMat), headOrientationYawOnly, MIX_RATIO));
+    glm::quat deltaRot = glm::inverse(glmExtractRotation(avatarToSensorMat))*hipYawRot;
+    glm::vec3 headPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
+    glm::vec3 headLocalAfterDelta = glm::inverse(deltaRot)*headPositionLocal;
 
     if (_enableDebugDrawBaseOfSupport) {
-        // default height is  ~ 1.64 meters
+        // default height is ~ 1.64 meters
         float scaleBaseOfSupport = getUserEyeHeight() / DEFAULT_AVATAR_EYE_HEIGHT;
         glm::vec3 rightFootPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("RightFoot"));
         drawBaseOfSupport(scaleBaseOfSupport, rightFootPositionLocal.y, avatarToWorldMat);
@@ -3084,12 +3087,11 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
 
     // scale the new cg based on user height relative to avatar height
     float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
-    glm::vec3 headPositionLocal = getAbsoluteJointTranslationInObjectFrame(_skeletonModel->getRig().indexOfJoint("Head"));
-
+    
     //find the new hips rotation using the new head-hips axis as the up axis
-    glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headPositionLocal, cgHipsPosition);
+    glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headLocalAfterDelta, cgHipsPosition);
     glm::quat hipsToSensor = glmExtractRotation(avatarToSensorMat)*newHipsRotation;
-    return createMatFromQuatAndPos(hipsToSensor, (invSensorToWorldScale*hipsPositionFinal));
+    return createMatFromQuatAndPos(newHipsRotation, (invSensorToWorldScale*hipsPositionFinal));
 }
 
 
