@@ -3079,9 +3079,6 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     // get the new center of gravity
     const glm::vec3 cgHipsPosition = computeCounterBalance();
     glm::vec3 hipsPositionFinal = transformPoint(avatarToSensorMat, cgHipsPosition);
-
-    // scale the new cg based on user height relative to avatar height
-    float invSensorToWorldScale = getUserEyeHeight() / getEyeHeight();
     
     //find the new hips rotation using the new head-hips axis as the up axis
     glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headLocalAfterDelta, cgHipsPosition);
