@@ -2861,7 +2861,7 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
     float distanceFromCenterX = rawCg.x;
 
     // The dampening scale factors makes the slope function soft clamp the 
-    // cg at the edge of the base of support of the feet, in the lateral and posterior directions.   
+    // cg at the edge of the base of support of the feet, in the lateral and posterior directions. 
     // In the forward direction we need a different scale because forward is in 
     // the direction of the hip extensor joint, which means bending usually happens 
     // well before reaching the edge of the base of support.
@@ -2882,7 +2882,7 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
         float scaleFrontNew = slope(inputFront);
         dampedCg.z = scaleFrontNew * clampFront;
     } else {
-        //  backwards displacement
+        // backwards displacement
         float inputBack;
         inputBack = fabs(distanceFromCenterZ / clampBack);
         float scaleBackNew = slope(inputBack);
@@ -2942,7 +2942,7 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
     glm::vec3 desiredCg = dampenCgMovement(currentCg, baseScale);
 
     // compute hips position to maintain desiredCg
-    glm::vec3 counterBalancedForHead = ((totalMass + hipsMass) * desiredCg) -  (cgMasses[0].position * cgMasses[0].weight);
+    glm::vec3 counterBalancedForHead = ((totalMass + hipsMass) * desiredCg) - (cgMasses[0].position * cgMasses[0].weight);
     glm::vec3 counterBalancedForLeftHand = counterBalancedForHead - (cgMasses[1].weight * cgMasses[1].position);
     glm::vec3 counterBalancedForRightHand = counterBalancedForLeftHand - (cgMasses[2].weight * cgMasses[2].position);
     glm::vec3 counterBalancedCg = (1.0f / hipsMass) * counterBalancedForRightHand;
@@ -3048,7 +3048,6 @@ void drawBaseOfSupport(float baseOfSupportScale, float footLocal, glm::mat4 avat
     DebugDraw::getInstance().drawRay(frontLeft, frontRight, rayColor);
 }
 
-
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::mat4 worldToSensorMat = glm::inverse(getSensorToWorldMatrix());
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
@@ -3088,7 +3087,6 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headLocalAfterDelta, cgHipsPosition);
     return createMatFromQuatAndPos(newHipsRotation, (invSensorToWorldScale*hipsPositionFinal));
 }
-
 
 float MyAvatar::getUserHeight() const {
     return _userHeight.get();
