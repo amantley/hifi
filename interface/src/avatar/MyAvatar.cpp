@@ -2976,8 +2976,6 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
 
         glm::vec3 newYaxisHips = glm::normalize(spineVec);
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
-        // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
-        glm::quat avatarToHipRotation(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 oldZaxisHips = glm::normalize(forward);
         glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
         glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
@@ -2993,8 +2991,6 @@ glm::quat computeNewHipsRotation(glm::quat hipYawRot, glm::vec3 curHead, glm::ve
 
         glm::vec3 newYaxisHips = glm::normalize(-spineVec);
         glm::vec3 forward = { 0.0f, 0.0f, 1.0f };
-        // note: quat constructor takes w,x,y,z  but overloaded stream out prints x,y,z,w
-        glm::quat avatarToHipRotation(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 oldZaxisHips = glm::normalize(forward);
         glm::vec3 newXaxisHips = glm::normalize(glm::cross(newYaxisHips, oldZaxisHips));
         glm::vec3 newZaxisHips = glm::normalize(glm::cross(newXaxisHips, newYaxisHips));
@@ -3090,7 +3086,6 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     
     //find the new hips rotation using the new head-hips axis as the up axis
     glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headLocalAfterDelta, cgHipsPosition);
-    glm::quat hipsToSensor = glmExtractRotation(avatarToSensorMat)*newHipsRotation;
     return createMatFromQuatAndPos(newHipsRotation, (invSensorToWorldScale*hipsPositionFinal));
 }
 
