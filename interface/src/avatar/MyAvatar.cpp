@@ -2897,7 +2897,7 @@ glm::vec3 dampenCgMovement(glm::vec3 rawCg, float baseOfSupportScale) {
         float scaleRightNew = slope(inputRight);
         dampedCg.x = scaleRightNew * clampRight;
     } else {
-        //  left of center
+        // left of center
         float inputLeft;
         inputLeft = fabs(distanceFromCenterX / clampLeft);
         float scaleLeftNew = slope(inputLeft);
@@ -3085,7 +3085,7 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     
     //find the new hips rotation using the new head-hips axis as the up axis
     glm::quat newHipsRotation = computeNewHipsRotation( hipYawRot, headLocalAfterDelta, cgHipsPosition);
-    return createMatFromQuatAndPos(newHipsRotation, (invSensorToWorldScale*hipsPositionFinal));
+    return createMatFromQuatAndPos(newHipsRotation, hipsPositionFinal);
 }
 
 float MyAvatar::getUserHeight() const {
