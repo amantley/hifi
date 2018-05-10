@@ -63,7 +63,8 @@ static AnimPose computeHipsInSensorFrame(MyAvatar* myAvatar, bool isFlying) {
     // turning this off for center of gravity model because it is already mixed in there
     if (!(myAvatar->getCenterOfGravityModelEnabled())) {
         const float MIX_RATIO = 0.5f;
-        hipsRot = safeLerp(glmExtractRotation(avatarToSensorMat), hipsRot, MIX_RATIO);
+        // hipsRot = safeLerp(glmExtractRotation(avatarToSensorMat), hipsRot, MIX_RATIO);
+        hipsRot = glmExtractRotation(avatarToSensorMat);
     }
 
     if (isFlying) {
@@ -199,6 +200,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         hips.trans() = lerp(hips.trans(), _prevHips.trans(), TRANS_HORIZ_ALPHA);
         hips.trans().y = lerp(hipsY, _prevHips.trans().y, TRANS_VERT_ALPHA);
         hips.rot() = safeLerp(hips.rot(), _prevHips.rot(), ROT_ALPHA);
+       
 
         _prevHips = hips;
         _prevHipsValid = true;
