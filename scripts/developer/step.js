@@ -10,20 +10,6 @@ var RIGHT = 1;
 
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
 
-var COLOR_LEVEL = { red: 0, green: 0, blue: 255 };
-var COLOR_NOT_LEVEL = { red: 128, green: 128, blue: 0 };
-var COLOR_OFF_HEIGHT = { red: 255, green: 255, blue: 0 };
-var COLOR_IS_STEPPING = { red: 255, green: 0, blue: 0 };
-
-var COLOR_LEFT = { red: 0, green: 255, blue: 255 };
-var COLOR_RIGHT = { red: 0, green: 255, blue: 255 };
-var COLOR_AVERAGE = { red: 128, green: 128, blue: 128 };
-var COLOR_DARK = { red: 50, green: 50, blue: 50 };
-
-var COLOR_MOVEMENT = { red: 128, green: 128, blue: 128 };
-
-var HAND_DIMENSIONS = { x: 0.03, y: 0.3, z: 0.03};
-
 //  Pitch and Roll more than these number of degrees from long-term average prevent stepping.
 var MAX_LEVEL_PITCH = 3;                        
 var MAX_LEVEL_ROLL = 3;
@@ -47,9 +33,6 @@ var AZIMUTH_TURN_MIN_DEGREES = 22;
 var AZIMUTH_TIME_SECS = 2.5;
 var HEAD_HAND_BALANCE = 2.0;
 
-var TABLET_BUTTON_NAME = "ENABLE RECENTER";
-var TABLET_BUTTON2_NAME = "TOGGLE STEP";
-var TABLET_BUTTON3_NAME = "vertical";
 var RECENTER = false;
 MyAvatar.hmdLeanRecenterEnabled = RECENTER;
 var STEPTURN = true;
@@ -108,22 +91,6 @@ var headEulers;
 var headAverageEulers;
 
 
-function messageSend(message) {
-    Messages.sendLocalMessage(MESSAGE_CHANNEL, message);
-    //  print("message sent " + JSON.stringify(message));
-    
-}
-function messageHandler(channel, messageString, senderID) {
-    if (channel !== MESSAGE_CHANNEL) {
-        print("received a message from the wrong channel " + channel);
-    }
-}
-
-Messages.subscribe(MESSAGE_CHANNEL);
-Messages.messageReceived.connect(messageHandler);
-
-var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
-
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
 }
@@ -170,20 +137,6 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
     }    
 }
 
-function heartbeat() {
-    if (Entities.getEntityProperties(head).lifetime !== null) {
-        //  print("extend life now");
-        Entities.editEntity(head,{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(headAverage,{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(hands[LEFT],{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(hands[RIGHT],{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(headAzimuthMarker,{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(lastAzimuthMarker,{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(rightAzimuthMarker,{lifetime: (5+Entities.getLifetimeInSeconds())});
-        Entities.editEntity(leftAzimuthMarker,{lifetime: (5+Entities.getLifetimeInSeconds())});
-    }
-}
-
 function update(dt) {
     
     var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
@@ -216,7 +169,6 @@ function update(dt) {
     }
 
     //  head position in object space
-    
     headPosAvatarSpace = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
     rightHandPosAvatarSpace = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("RightHand"));
     leftHandPosAvatarSpace = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("LeftHand"));
@@ -227,7 +179,7 @@ function update(dt) {
     modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength, headPose.translation.y);
     print("the mode height is currently.............................  " + modeHeight + " user height " + headPose.translation.y);
     // DebugDraw.addMyAvatarMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
-    DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
+    DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, { x: 0, y: 1, z: 0 });
     // DebugDraw.addMarker("avatar_hips", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position + Vec3.multiplyQbyV(MyAvatar.orientation, {x: -currentHipsPos.x, y: currentHipsPos.y, z: -currentHipsPos.z}), COLOR_LEVEL);
     // print("current head x " + headPose.translation.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
     // print("current head height ....................... " + headPose.translation.y + ",,,,,,,,,,,,,,,,,,," + modeHeight);
@@ -238,18 +190,10 @@ function update(dt) {
     // print("the angle of the head is ........... " + Vec3.length({ x: headEulers.x, y: 0.0, z: headEulers.z }));
     //  If the head is not level, we cannot step. 
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
-    var headColor = (isHeadLevel) ? COLOR_LEVEL : COLOR_NOT_LEVEL;
     
-    //  var deltaHead = Vec3.subtract(headPosition, headAveragePosition);
     var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
-    
-    
-    //  If height of head differs from long-term average, we cannot step.
-    if (heightDifferenceFromAverage > MAX_HEIGHT_CHANGE) {
-        headColor = COLOR_OFF_HEIGHT;
-    }
-    
+
     //  are we off the base of support, losing height and tilting the head 
     //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
     if (!inSupport && (xzAngularVelocity < 0.35) && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE)) {
@@ -265,9 +209,6 @@ function update(dt) {
     stepTimer -= dt;
     if (isStepping && (lateralDistanceFromAverage < DONE_STEPPING_DISTANCE)) {
         isStepping = false;
-    }
-    if (isStepping) {
-        headColor = COLOR_IS_STEPPING;
     }
      
     //  Record averages
@@ -290,7 +231,6 @@ function update(dt) {
     var leftRightMidpoint = (Quat.safeEulerAngles(hipToHandAverage[LEFT]).y + Quat.safeEulerAngles(hipToHandAverage[RIGHT]).y)/2.0;
     //  lets try using this 100% of the time first.
 
-    var headAzimuthMarkerColor = COLOR_RIGHT;
     //  head has turned more than threshold minimum.
     //  the hands are on either side of the head.
     //  the difference between the head and right hand look at compared to 
@@ -304,7 +244,6 @@ function update(dt) {
 
         //  hipsRotation = {x: 0,y: 1,z: 0,w: 0};
         hipsRotation = Quat.angleAxis(averageAzimuth, { x: 0, y: 1, z: 0 });
-        messageSend(JSON.stringify(hipsRotation));
 
     }
     //  print("hips rotation step- js " + hipsRotation.x + " " + hipsRotation.y + " " + hipsRotation.z + " " + hipsRotation.w);
@@ -358,28 +297,11 @@ function update(dt) {
         azimuthChangeTimer = 0;
     }
     */
-    Entities.editEntity(head, { position: Vec3.sum(headPosition, Quat.getFront(MyAvatar.orientation)),
-                                rotation: headOrientation, 
-                                color: headColor});
-
-    Entities.editEntity(headAverage, { position: Vec3.sum(headAveragePosition, Quat.getFront(MyAvatar.orientation)),
-                                       rotation: headAverageOrientation, 
-                                       color: COLOR_AVERAGE});
-
-    Entities.editEntity(lastAzimuthMarker, { position: Vec3.sum(MyAvatar.position, Quat.getFront(MyAvatar.orientation)), 
-                                             rotation: Quat.fromPitchYawRollDegrees(0, lastHeadAzimuth, 0 )});
-
-    Entities.editEntity(headAzimuthMarker, { position: Vec3.sum(MyAvatar.position, Quat.getFront(MyAvatar.orientation)), 
-                                             rotation: Quat.fromPitchYawRollDegrees(0, azimuth, 0 ),
-                                             color: headAzimuthMarkerColor });
-
 
     //  Check the hands one at a time 
     for (var hand = LEFT; hand <= RIGHT; hand++) {
         //  Update hand object 
         var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
-        
-
         var lateralPoseVelocity = {x:0, y:0, z:0};
         if (pose.valid && headPose.valid) {
             lateralPoseVelocity = pose.velocity;
@@ -392,23 +314,9 @@ function update(dt) {
         //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
         handPosition = (hand === 1) ? rightHandPosAvatarSpace : leftHandPosAvatarSpace;
         handOrientation = Quat.multiply(MyAvatar.orientation, pose.rotation);
-        var color = (handSteppingTimer > STEP_TIME_SECS) ? COLOR_IS_STEPPING : COLOR_LEFT;
         //  Update angle from hips to hand, to be used for turning 
         var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
-
         hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
-
-
-        Entities.editEntity(hands[hand], { position: Vec3.sum(handPosition, Quat.getFront(MyAvatar.orientation)),
-                                            rotation: handOrientation,
-                                            color: color,
-                                            dimensions: Vec3.sum(HAND_DIMENSIONS, {x: 0,y: Math.abs(handDotHead[hand]) * 3,z: 0 }) });
-        
-        Entities.editEntity(((hand === LEFT) ? leftAzimuthMarker : rightAzimuthMarker), 
-                                                { position: Vec3.sum(MyAvatar.position, Quat.getFront(MyAvatar.orientation)), 
-                                                  rotation: hipToHandAverage[hand]});
-
-
     }
 
     //  If the velocity of the hands in direction of head scaled by velocity of head is enough,
@@ -426,115 +334,7 @@ function update(dt) {
 }
 
 Script.update.connect(update);
-Script.setInterval(heartbeat,3000);
 Script.scriptEnding.connect(function () {
     Script.update.disconnect(update);
-    Entities.deleteEntity(head);
-    Entities.deleteEntity(headAverage);
-    Entities.deleteEntity(hands[LEFT]);
-    Entities.deleteEntity(hands[RIGHT]);
-    Entities.deleteEntity(lastAzimuthMarker);
-    Entities.deleteEntity(headAzimuthMarker);
-    Entities.deleteEntity(leftAzimuthMarker);
-    Entities.deleteEntity(rightAzimuthMarker);
-    
-    Messages.messageReceived.disconnect(messageHandler);
-    Messages.unsubscribe(MESSAGE_CHANNEL);
 });
 
-function createMarkers() {
-
-    var AZIMUTH_MARKER_SIZE = { x: 0.01, y: 0.01, z: 0.4 };
-    var LAST_AZIMUTH_MARKER_SIZE = { x: 0.007, y: 0.007, z: 0.45 };
-    
-    //  print("previous head dimension");
-    //  print(head.dimensions.x);
-
-    head = Entities.addEntity({
-        name: "head",
-        type: "Box",
-        dimensions: { x: 0.05, y: 0.05, z: 0.5},
-        color: COLOR_LEVEL,
-        position: headAveragePosition,
-        collisionless: true,
-        lifetime: 50,
-        dynamic: false  
-    });
-
-    headAverage = Entities.addEntity({
-        name: "headAverage",
-        type: "Box",
-        dimensions: { x: 0.02, y: 0.02, z: 0.7},
-        color: COLOR_LEVEL,
-        position: headAveragePosition,
-        lifetime: 50,
-        collisionless: true,
-        dynamic: false  
-    });
-
-    hands[LEFT] = Entities.addEntity({
-        name: "handsleft",
-        type: "Box",
-        dimensions: HAND_DIMENSIONS,
-        color: COLOR_LEFT,
-        position: Vec3.sum(inFront, { x: -0.3, y: 0.3, z: 0 }),
-        lifetime: 50,
-        collisionless: true,
-        dynamic: false  
-    });
-
-    hands[RIGHT] = Entities.addEntity({
-        name: "handsright",
-        type: "Box",
-        dimensions: HAND_DIMENSIONS,
-        color: COLOR_RIGHT,
-        position: Vec3.sum(inFront, { x: 0.3, y: 0.3, z: 0 }),
-        lifetime: 50,
-        collisionless: true,
-        dynamic: false  
-    });
-
-    lastAzimuthMarker = Entities.addEntity({
-        name: "lastazimuth",
-        type: "Box",
-        dimensions: AZIMUTH_MARKER_SIZE,
-        color: COLOR_DARK,
-        position: inFront,
-        collisionless: true,
-        lifetime: 50,
-        dynamic: false  
-    });
-
-    headAzimuthMarker = Entities.addEntity({
-        name: "headazimuth",
-        type: "Box",
-        dimensions: AZIMUTH_MARKER_SIZE,
-        color: COLOR_RIGHT,
-        position: inFront,
-        collisionless: true,
-        lifetime: 50,
-        dynamic: false  
-    });
-
-    leftAzimuthMarker = Entities.addEntity({
-        name: "leftazimuth",
-        type: "Box",
-        dimensions: AZIMUTH_MARKER_SIZE,
-        color: COLOR_AVERAGE,
-        position: inFront,
-        collisionless: true,
-        lifetime: 50,
-        dynamic: false  
-    });
-
-    rightAzimuthMarker = Entities.addEntity({
-        name: "rightazimuth",
-        type: "Box",
-        dimensions: AZIMUTH_MARKER_SIZE,
-        color: COLOR_AVERAGE,
-        position: inFront,
-        collisionless: true,
-        lifetime: 50,
-        dynamic: false  
-    });
-}
