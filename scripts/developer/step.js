@@ -28,7 +28,7 @@ var HAND_DIMENSIONS = { x: 0.03, y: 0.3, z: 0.03};
 var MAX_LEVEL_PITCH = 3;                        
 var MAX_LEVEL_ROLL = 3;
 
-//  How far can the head move up or down before blocking stepping?
+//  How far can the head move down before blocking stepping?
 //  .0075 was old value. 
 var MAX_HEIGHT_CHANGE = 0.010;
 
@@ -53,6 +53,7 @@ var TABLET_BUTTON3_NAME = "vertical";
 var RECENTER = false;
 MyAvatar.hmdLeanRecenterEnabled = RECENTER;
 var STEPTURN = true;
+var RESET_MODE = false;
 
 var MY_HEIGHT = 1.15;
 var modeArray = new Array(100);
@@ -121,44 +122,7 @@ function messageHandler(channel, messageString, senderID) {
 Messages.subscribe(MESSAGE_CHANNEL);
 Messages.messageReceived.connect(messageHandler);
 
-
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
-
-var tabletButton = tablet.addButton({
-    text: TABLET_BUTTON_NAME
-    
-});
-
-var tabletButton2 = tablet.addButton({
-    text: TABLET_BUTTON2_NAME
-    
-});
-
-var tabletButton3 = tablet.addButton({
-    text: TABLET_BUTTON3_NAME
-    
-});
-
-tabletButton.clicked.connect(function () {
-    print("clicked recenter button");
-    print("recenter is: " + RECENTER);
-    MyAvatar.hmdLeanRecenterEnabled = RECENTER;
-
-    RECENTER = !RECENTER;
-    
-});
-
-tabletButton2.clicked.connect(function () {
-    print("toggle stepping and turning");
-    STEPTURN = !STEPTURN;
-    print("stepping and turning is now --->>>> " + STEPTURN);
-});
-
-tabletButton3.clicked.connect(function () {
-    print("toggle vertical");
-    MyAvatar.triggerVerticalRecenter();
-    //  STEPTURN = !STEPTURN;
-});
 
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
@@ -180,7 +144,7 @@ function addToModeArray(arr,num) {
     arr[arr.length - 1] = (Math.floor(num*100))/100.00;
 }
 
-function findMode(ary, currentMode, backLength, defaultBack) {
+function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
     var numMapping = {};
     var greatestFreq = 0;
     var mode;
@@ -194,9 +158,12 @@ function findMode(ary, currentMode, backLength, defaultBack) {
     if (mode > currentMode) {
         return Number(mode);    
     } else {
-        if (backLength > (defaultBack + 0.10)) {
+        if ((backLength > (defaultBack + 0.10)) || RESET_MODE || !HMD.active) {
             print("resetting the mode....................default " + defaultBack + " head-origin " + backLength);
-            return headPosition.y;
+            print("resetting the mode............................................. ");
+            print("resetting the mode............................................. ");
+            RESET_MODE = false;
+            return currentHeight - 0.02;
         } else {
             return currentMode; 
         }
@@ -254,24 +221,28 @@ function update(dt) {
     rightHandPosAvatarSpace = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("RightHand"));
     leftHandPosAvatarSpace = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("LeftHand"));
     var inSupport = withinBaseOfSupport(headPosAvatarSpace);
-    print("are we in the base of support? " + inSupport);
+    // print("are we in the base of support? " + inSupport);
     
-    var retAdd = addToModeArray(modeArray,headPosition.y);
-    modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength);
-    print("the mode height is currently.............................  " + modeHeight);
+    var retAdd = addToModeArray(modeArray,headPose.translation.y);
+    modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength, headPose.translation.y);
+    print("the mode height is currently.............................  " + modeHeight + " user height " + headPose.translation.y);
     // DebugDraw.addMyAvatarMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
     DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
     // DebugDraw.addMarker("avatar_hips", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position + Vec3.multiplyQbyV(MyAvatar.orientation, {x: -currentHipsPos.x, y: currentHipsPos.y, z: -currentHipsPos.z}), COLOR_LEVEL);
-    print("current hips x " + currentHipsPos.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
-    print("current head height ....................... " + currentHeadPos.y);
-
+    // print("current head x " + headPose.translation.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
+    // print("current head height ....................... " + headPose.translation.y + ",,,,,,,,,,,,,,,,,,," + modeHeight);
+    // print("current head velocity ....................... " + headPose.velocity.x + " " + headPose.velocity.y + " " + headPose.velocity.z);
+    // print("current head angular velocity ....................... " + (Math.floor(headPose.angularVelocity.x * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
+    var xzAngularVelocity = Vec3.length({ x: headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z });
+    // print("magnitude of roll pitch angular velocity------------ " + xzAngularVelocity);
+    // print("the angle of the head is ........... " + Vec3.length({ x: headEulers.x, y: 0.0, z: headEulers.z }));
     //  If the head is not level, we cannot step. 
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     var headColor = (isHeadLevel) ? COLOR_LEVEL : COLOR_NOT_LEVEL;
     
     //  var deltaHead = Vec3.subtract(headPosition, headAveragePosition);
-    var lateralDistanceFromAverage = {x: 0,y: 0,z: 0};
-    var heightDifferenceFromAverage = modeHeight - headPosition.y;
+    var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
+    var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
     
     
     //  If height of head differs from long-term average, we cannot step.
@@ -280,11 +251,13 @@ function update(dt) {
     }
     
     //  are we off the base of support, losing height and tilting the head 
-    if ( !inSupport && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel ) {
+    //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
+    if (!inSupport && (xzAngularVelocity < 0.35) && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE)) {
         isStepping = true;
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
             MyAvatar.triggerHorizontalRecenter();
+            RESET_MODE = true;
             //  wait half a second to trigger again.
             stepTimer = 0.5;
         }
@@ -407,11 +380,14 @@ function update(dt) {
         var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
         
 
-        var lateralPoseVelocity = pose.velocity; 
-        lateralPoseVelocity.y = 0;
-        var lateralHeadVelocity = headPose.velocity; 
-        lateralHeadVelocity.y = 0;
-        handDotHead[hand] = Vec3.dot(lateralPoseVelocity, lateralHeadVelocity);
+        var lateralPoseVelocity = {x:0, y:0, z:0};
+        if (pose.valid && headPose.valid) {
+            lateralPoseVelocity = pose.velocity;
+            lateralPoseVelocity.y = 0;
+            var lateralHeadVelocity = headPose.velocity;
+            lateralHeadVelocity.y = 0;
+            handDotHead[hand] = Vec3.dot(lateralPoseVelocity, lateralHeadVelocity);
+        }
 
         //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
         handPosition = (hand === 1) ? rightHandPosAvatarSpace : leftHandPosAvatarSpace;
@@ -447,8 +423,6 @@ function update(dt) {
         handSteppingDetect = false;
         handSteppingTimer = 0;
     }
-
-
 }
 
 Script.update.connect(update);
@@ -466,12 +440,6 @@ Script.scriptEnding.connect(function () {
     
     Messages.messageReceived.disconnect(messageHandler);
     Messages.unsubscribe(MESSAGE_CHANNEL);
-    
-    if (tablet) {
-        tablet.removeButton(tabletButton);
-        tablet.removeButton(tabletButton2);
-        tablet.removeButton(tabletButton3);
-    }
 });
 
 function createMarkers() {
