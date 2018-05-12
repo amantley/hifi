@@ -7,6 +7,7 @@ var messageFrequency = 3;
 
 var LEFT = 0;
 var RIGHT = 1;
+var DEFAULT_AVATAR_HEIGHT = 1.64;
 
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
 
@@ -96,7 +97,13 @@ function isInsideLine(a, b, c) {
 }
 
 function withinBaseOfSupport(pos) {
-    return ( isInsideLine(frontLeft,frontRight,pos) && isInsideLine(frontRight,backRight,pos) && isInsideLine(backRight,backLeft,pos) && isInsideLine(backLeft,frontLeft,pos) );
+    var userScale = 1.0;
+    if (HMD.active) {
+        print("hmd height " + HMD.position.y);
+        // to do: get the scaling correct here. AA
+        // userScale = HMD.position.y / DEFAULT_AVATAR_HEIGHT;
+    }
+    return (isInsideLine(userScale * frontLeft, userScale * frontRight, pos) && isInsideLine(userScale * frontRight, userScale * backRight, pos) && isInsideLine(userScale * backRight, userScale * backLeft, pos) && isInsideLine(userScale * backLeft, userScale*frontLeft, pos));
 }
 
 
@@ -201,7 +208,7 @@ function update(dt) {
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
             MyAvatar.triggerHorizontalRecenter();
-            RESET_MODE = true;
+            //  RESET_MODE = true;
             //  wait half a second to trigger again.
             stepTimer = 0.5;
         }
