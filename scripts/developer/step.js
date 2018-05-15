@@ -54,9 +54,9 @@ var hipsPosition = {x: 0, y: 0, z: 0};
 var spine2Rotation = {x: 0, y: -0.85, z: 0, w: 0.5};
 var spine2Position = { x: 0, y: 0, z: 0 };
 
-var lateralEdge = 0.09;
-var frontEdge = -0.07;
-var backEdge = 0.07;
+var lateralEdge = 0.14;// was 0.09
+var frontEdge = -0.10;// fmi was -0.07
+var backEdge = 0.12;
 var frontLeft = { x: -lateralEdge, y: 0, z: frontEdge };
 var frontRight = { x: lateralEdge, y: 0, z: frontEdge };
 var backLeft = { x: -lateralEdge, y: 0, z: backEdge };
@@ -90,6 +90,17 @@ var head, headAverage, lastAzimuthMarker, headAzimuthMarker, leftAzimuthMarker, 
 //  createMarkers();
 var headEulers;
 var headAverageEulers;
+var oldAngularVelocity = { x: 0.0, y: 0.0, z: 0.0 };
+var headSwayCount = 0;
+var accelerationArray = new Array(30);
+var headToHandVelocityRatio = 1.0;
+
+function onKeyPress(event) {
+    if (event.text === "'") {
+        // when the sensors are reset, then reset the mode.
+        RESET_MODE = false;
+    }
+}
 
 
 function isInsideLine(a, b, c) {
@@ -99,16 +110,31 @@ function isInsideLine(a, b, c) {
 function withinBaseOfSupport(pos) {
     var userScale = 1.0;
     if (HMD.active) {
-        print("hmd height " + HMD.position.y);
+        // print("hmd height " + HMD.position.y);
         // to do: get the scaling correct here. AA
         // userScale = HMD.position.y / DEFAULT_AVATAR_HEIGHT;
     }
-    return (isInsideLine(userScale * frontLeft, userScale * frontRight, pos) && isInsideLine(userScale * frontRight, userScale * backRight, pos) && isInsideLine(userScale * backRight, userScale * backLeft, pos) && isInsideLine(userScale * backLeft, userScale*frontLeft, pos));
+    return (isInsideLine(Vec3.multiply(userScale, frontLeft), Vec3.multiply(userScale, frontRight), pos) && isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos)
+        && isInsideLine(Vec3.multiply(userScale, backRight), Vec3.multiply(userScale, backLeft), pos) && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
 }
 
 
 function limitAngle(angle) {
     return (angle + 180) % 360 - 180;
+}
+
+function findAverage(arr) {
+    var sum = arr.reduce(function (acc, val) {
+        return acc + val;
+    },0);
+    return sum / arr.length;
+}
+
+function addToAccelerationArray(arr, num) {
+    for (var i = 0 ; i < (arr.length - 1) ; i++) {
+        arr[i] = arr[i + 1];
+    }
+    arr[arr.length - 1] = num;
 }
 
 function addToModeArray(arr,num) {
@@ -132,11 +158,11 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
     if (mode > currentMode) {
         return Number(mode);    
     } else {
-        if ((backLength > (defaultBack + 0.10)) || RESET_MODE || !HMD.active) {
+        if ((backLength > (defaultBack + 0.10)) || (!RESET_MODE && HMD.active)) {
             print("resetting the mode....................default " + defaultBack + " head-origin " + backLength);
             print("resetting the mode............................................. ");
             print("resetting the mode............................................. ");
-            RESET_MODE = false;
+            RESET_MODE = true;
             return currentHeight - 0.02;
         } else {
             return currentMode; 
@@ -165,6 +191,8 @@ function update(dt) {
 
     //  Update head information
     var headPose = Controller.getPoseValue(Controller.Standard.Head);
+    var rightHandPose = Controller.getPoseValue(Controller.Standard.RightHand);
+    var leftHandPose = Controller.getPoseValue(Controller.Standard.LeftHand);
     headPosition = Camera.getPosition();
     headOrientation = Camera.getOrientation();
     headEulers = Quat.safeEulerAngles(headOrientation);
@@ -184,26 +212,55 @@ function update(dt) {
     
     var retAdd = addToModeArray(modeArray,headPose.translation.y);
     modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength, headPose.translation.y);
-    print("the mode height is currently.............................  " + modeHeight + " user height " + headPose.translation.y);
+    // print("the mode height is currently.............................  " + modeHeight + " user height " + headPose.translation.y);
     // DebugDraw.addMyAvatarMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
     DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, { x: 0, y: 1, z: 0 });
     // DebugDraw.addMarker("avatar_hips", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position + Vec3.multiplyQbyV(MyAvatar.orientation, {x: -currentHipsPos.x, y: currentHipsPos.y, z: -currentHipsPos.z}), COLOR_LEVEL);
     // print("current head x " + headPose.translation.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
     // print("current head height ....................... " + headPose.translation.y + ",,,,,,,,,,,,,,,,,,," + modeHeight);
-    // print("current head velocity ....................... " + headPose.velocity.x + " " + headPose.velocity.y + " " + headPose.velocity.z);
+    var totalHeadVelocity = Vec3.length(headPose.velocity);
+    // print("current head velocity ....................... " + totalHeadVelocity);
     // print("current head angular velocity ....................... " + (Math.floor(headPose.angularVelocity.x * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
     var xzAngularVelocity = Vec3.length({ x: headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z });
+    var xzRHandAngularVelocity = Vec3.length({ x: rightHandPose.angularVelocity.x, y: 0.0, z: rightHandPose.angularVelocity.z });
+    var xzRHandVelocity = Vec3.length({ x: rightHandPose.velocity.x, y: 0.0, z: rightHandPose.velocity.z });
+
+    var xAcceleration = headPose.angularVelocity.x - oldAngularVelocity.x;
+    var zAcceleration = headPose.angularVelocity.z - oldAngularVelocity.z;
+    if (xAcceleration < 0.0) {
+        xAcceleration = 0.0;
+    }
+    if (zAcceleration < 0.0) {
+        zAcceleration = 0.0;
+    }
+
+    var xzAngularAcceleration = Vec3.length({ x: xAcceleration, y: 0.0, z: zAcceleration });
+    addToAccelerationArray(accelerationArray, xzAngularAcceleration);
+    var averageAngularAcceleration = findAverage(accelerationArray);
+    // var xzAngularAcceleration = Vec3.length({ x: (headPose.angularVelocity.x - oldAngularVelocity.x), y: 0.0, z: (headPose.angularVelocity.z - oldAngularVelocity.z) });
+    oldAngularVelocity = {x:headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z};
     // print("magnitude of roll pitch angular velocity------------ " + xzAngularVelocity);
+    // print("ratio of angular to translational velocity " + xzAngularVelocity / totalHeadVelocity);
+    // print("hand dot head left " + handDotHead[LEFT]);
+    // print("hand left velocity " + Vec3.length(leftHandPose.velocity));
+    // print("magnitude of roll pitch right hand angular velocity------------ " + xzRHandAngularVelocity);
+    // print("magnitude of right hand velocity------------ " + xzRHandVelocity);
+    // print("magnitude of roll pitch angular acceleration------------ " + averageAngularAcceleration);
     // print("the angle of the head is ........... " + Vec3.length({ x: headEulers.x, y: 0.0, z: headEulers.z }));
-    //  If the head is not level, we cannot step. 
+    // If the head is not level, we cannot step. 
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     
     var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
+    print("hand velocities " + Vec3.length(leftHandPose.velocity) + " " + Vec3.length(rightHandPose.velocity));
+
     //  are we off the base of support, losing height and tilting the head 
+    // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
+    // then we can translate
     //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
-    if (!inSupport && (xzAngularVelocity < 0.35) && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE)) {
+    if (!inSupport && (xzAngularVelocity < 0.25) && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE)) {
+        // && ((!leftHandPose.valid || handDotHead[LEFT] > 0.5) && (Vec3.length(leftHandPose.velocity) > 0.15)) && ((!rightHandPose.valid || handDotHead[RIGHT] > 0.5) && (Vec3.length(rightHandPose.velocity) > 0.15))) {
         isStepping = true;
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
@@ -212,10 +269,15 @@ function update(dt) {
             //  wait half a second to trigger again.
             stepTimer = 0.5;
         }
+    } else if (headSwayCount > 0) {
+        headSwayCount--;
     }
     stepTimer -= dt;
     if (isStepping && (lateralDistanceFromAverage < DONE_STEPPING_DISTANCE)) {
         isStepping = false;
+    }
+    if (!HMD.active) {
+        RESET_MODE = false;
     }
      
     //  Record averages
@@ -315,7 +377,7 @@ function update(dt) {
             lateralPoseVelocity.y = 0;
             var lateralHeadVelocity = headPose.velocity;
             lateralHeadVelocity.y = 0;
-            handDotHead[hand] = Vec3.dot(lateralPoseVelocity, lateralHeadVelocity);
+            handDotHead[hand] = Vec3.dot(Vec3.normalize(lateralPoseVelocity), Vec3.normalize(lateralHeadVelocity));
         }
 
         //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
@@ -324,6 +386,8 @@ function update(dt) {
         //  Update angle from hips to hand, to be used for turning 
         var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
         hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
+        // headToHandVelocityRatio = Vec3.length(lateralPoseVelocity) / Vec3.length(lateralHeadVelocity);
+        // print("lateral velocity ratio " + headToHandVelocityRatio);
     }
 
     //  If the velocity of the hands in direction of head scaled by velocity of head is enough,
@@ -341,6 +405,7 @@ function update(dt) {
 }
 
 Script.update.connect(update);
+Controller.keyPressEvent.connect(onKeyPress);
 Script.scriptEnding.connect(function () {
     Script.update.disconnect(update);
 });
