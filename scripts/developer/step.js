@@ -2,12 +2,15 @@
 
 /* global Script, Vec3, MyAvatar Tablet Messages Quat DebugDraw Mat4 Entities Xform Controller Camera*/
 
+Script.registerValue("STEPAPP", true);
+
 var MESSAGE_CHANNEL = "Hifi-Step-Cg"; 
 var messageFrequency = 3;
 
 var LEFT = 0;
 var RIGHT = 1;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
+var angularVelocityThreshold = 0.25;
 
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
 
@@ -17,7 +20,7 @@ var MAX_LEVEL_ROLL = 3;
 
 //  How far can the head move down before blocking stepping?
 //  .0075 was old value. 
-var MAX_HEIGHT_CHANGE = 0.010;
+var maxHeightChange = 0.010;
 
 //  this should be changed by the actual base of support of the person? or Avatar?
 //  You must have moved at least this far laterally to take a step
@@ -56,7 +59,7 @@ var spine2Position = { x: 0, y: 0, z: 0 };
 
 var lateralEdge = 0.14;// was 0.09
 var frontEdge = -0.10;// fmi was -0.07
-var backEdge = 0.12;
+var backEdge = 0.13;
 var frontLeft = { x: -lateralEdge, y: 0, z: frontEdge };
 var frontRight = { x: lateralEdge, y: 0, z: frontEdge };
 var backLeft = { x: -lateralEdge, y: 0, z: backEdge };
@@ -94,6 +97,28 @@ var oldAngularVelocity = { x: 0.0, y: 0.0, z: 0.0 };
 var headSwayCount = 0;
 var accelerationArray = new Array(30);
 var headToHandVelocityRatio = 1.0;
+var debugDrawBase = true;
+
+function drawBase() {
+    // transform corners into world space, for rendering.
+    var xform = new Xform(MyAvatar.orientation, MyAvatar.position);
+    var worldPointLf = xform.xformPoint(frontLeft);
+    var worldPointRf = xform.xformPoint(frontRight);
+    var worldPointLb = xform.xformPoint(backLeft);
+    var worldPointRb = xform.xformPoint(backRight);
+    worldPointLf = -0.85;
+    worldPointRf = -0.85;
+    worldPointLb = -0.85;
+    worldPointRb = -0.85;
+    
+    GREEN = { r: 0, g: 1, b: 0, a: 1 };
+    
+    // draw border
+    DebugDraw.drawRay(worldPointLf, worldPointRf, GREEN);
+    DebugDraw.drawRay(worldPointRf, worldPointsRb, GREEN);
+    DebugDraw.drawRay(worldPointRb, worldPointsLb, GREEN);
+    DebugDraw.drawRay(worldPointLb, worldPointsLf, GREEN);
+}
 
 function onKeyPress(event) {
     if (event.text === "'") {
@@ -102,9 +127,103 @@ function onKeyPress(event) {
     }
 }
 
+var TABLET_BUTTON_NAME = "STEP";
+var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+    
+var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+var tabletButton = tablet.addButton({
+    text: TABLET_BUTTON_NAME,
+    icon: Script.resolvePath("file:///c:/angus/javascript_bak/stepApp/step2.svg"),
+    activeIcon: Script.resolvePath("https://hifi-content.s3.amazonaws.com/luis/flowFiles/flow-a.svg")
+});
+var activated = false;
+function manageClick() {
+    if (activated) {
+        tablet.gotoHomeScreen();
+    } else {
+        tablet.gotoWebScreen(HTML_URL);
+    }
+}
+tabletButton.clicked.connect(manageClick);
+
+function onScreenChanged(type, url) {     
+    print("Screen changed");
+    if (type === "Web" && url === HTML_URL) {
+        // tabletButton.editProperties({isActive: true});
+        if (!activated) {
+            // hook up to event bridge
+            tablet.webEventReceived.connect(onWebEventReceived);
+            print("after connect web event");
+            Script.setTimeout(function() {
+                print("step app is loaded: ");
+            }, 500);
+        }
+        activated = true;
+    } else {
+        // tabletButton.editProperties({isActive: false});
+        if (activated) {
+            // disconnect from event bridge
+            tablet.webEventReceived.disconnect(onWebEventReceived);
+        }
+        activated = false;
+    }
+}
+
+function onWebEventReceived(msg) {
+    var message = JSON.parse(msg);
+    print(" we have a message from html dialog " + message.type);
+    switch (message.type) {
+        case "onAnteriorPosteriorBaseSlider":
+            print("anterior slider " + message.data.value);
+            setAntPostDistance(message.data.value);
+            break;
+        case "onLateralBaseSlider":
+            print("lateral slider " + message.data.value);
+            setLateralDistance(message.data.value);
+            break;
+        case "onAngularVelocitySlider":
+            print("message value " + message.data.value);
+            setAngularThreshold(message.data.value);
+            break;
+        case "onHeightDifferenceSlider":
+            print("height slider " + message.data.value);
+            setHeightThreshold(message.data.value);
+            break;
+        default:
+            print("unknown message from step html!!");
+            break;
+    }
+}
+
 
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
+}
+
+function setAngularThreshold(num) {
+    angularVelocityThreshold = num;
+    print("angular threshold " + angularVelocityThreshold);
+}
+
+function setHeightThreshold(num) {
+    maxHeightChange = num;
+    print("height threshold " + maxHeightChange);
+}
+
+function setLateralDistance(num) {
+    lateralEdge = num;
+    frontLeft.x = -lateralEdge;
+    frontRight.x = lateralEdge;
+    backLeft.x = -lateralEdge;
+    backRight.x = lateralEdge;
+    print("lateral distance  " + lateralEdge);
+}
+
+function setAntPostDistance(num) {
+    frontEdge = num;
+    frontLeft.z = frontEdge;
+    frontRight.z = frontEdge;
+    print("anterior posterior distance " + frontEdge);
 }
 
 function withinBaseOfSupport(pos) {
@@ -114,8 +233,10 @@ function withinBaseOfSupport(pos) {
         // to do: get the scaling correct here. AA
         // userScale = HMD.position.y / DEFAULT_AVATAR_HEIGHT;
     }
-    return (isInsideLine(Vec3.multiply(userScale, frontLeft), Vec3.multiply(userScale, frontRight), pos) && isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos)
-        && isInsideLine(Vec3.multiply(userScale, backRight), Vec3.multiply(userScale, backLeft), pos) && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
+    return (isInsideLine(Vec3.multiply(userScale, frontLeft), Vec3.multiply(userScale, frontRight), pos)
+        && isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos)
+        && isInsideLine(Vec3.multiply(userScale, backRight), Vec3.multiply(userScale, backLeft), pos)
+        && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
 }
 
 
@@ -171,7 +292,9 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
 }
 
 function update(dt) {
-    
+    if (debugDrawBase) {
+        drawBase();
+    }
     var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
     var currentHeadPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
     var defaultHipsPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
@@ -179,8 +302,6 @@ function update(dt) {
     defaultLength = Vec3.length(Vec3.subtract(defaultHeadPos, defaultHipsPos));
     var headMinusHipLean = Vec3.subtract(currentHeadPos,defaultHipsPos);
     torsoLength = Vec3.length(headMinusHipLean);
-    var headToHipsOnly = Vec3.length(Vec3.subtract(currentHeadPos, currentHipsPos));
-    // print("default length " + defaultLength + " head avatar origin " + torsoLength + " head hips length " + headToHipsOnly);
 
     leaningDot = Vec3.dot(Vec3.normalize(headMinusHipLean),{x: 0,y: 1,z: 0});
     leaningDotAverage = leaningDot * HEIGHT_AVERAGING_RATE + leaningDotAverage * (1.0 - HEIGHT_AVERAGING_RATE);
@@ -210,17 +331,17 @@ function update(dt) {
     var inSupport = withinBaseOfSupport(headPosAvatarSpace);
     // print("are we in the base of support? " + inSupport);
     
-    var retAdd = addToModeArray(modeArray,headPose.translation.y);
+    addToModeArray(modeArray,headPose.translation.y);
     modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength, headPose.translation.y);
-    // print("the mode height is currently.............................  " + modeHeight + " user height " + headPose.translation.y);
+    // print("the mode height is currently....  " + modeHeight + " user height " + headPose.translation.y);
     // DebugDraw.addMyAvatarMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
     DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, { x: 0, y: 1, z: 0 });
-    // DebugDraw.addMarker("avatar_hips", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position + Vec3.multiplyQbyV(MyAvatar.orientation, {x: -currentHipsPos.x, y: currentHipsPos.y, z: -currentHipsPos.z}), COLOR_LEVEL);
     // print("current head x " + headPose.translation.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
     // print("current head height ....................... " + headPose.translation.y + ",,,,,,,,,,,,,,,,,,," + modeHeight);
     var totalHeadVelocity = Vec3.length(headPose.velocity);
     // print("current head velocity ....................... " + totalHeadVelocity);
-    // print("current head angular velocity ....................... " + (Math.floor(headPose.angularVelocity.x * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
+    // print("current head angular velocity ....................... " + (Math.floor(headPose.angularVelocity.x * 100)) / 100.00 + " " + 
+    //     (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
     var xzAngularVelocity = Vec3.length({ x: headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z });
     var xzRHandAngularVelocity = Vec3.length({ x: rightHandPose.angularVelocity.x, y: 0.0, z: rightHandPose.angularVelocity.z });
     var xzRHandVelocity = Vec3.length({ x: rightHandPose.velocity.x, y: 0.0, z: rightHandPose.velocity.z });
@@ -233,11 +354,7 @@ function update(dt) {
     if (zAcceleration < 0.0) {
         zAcceleration = 0.0;
     }
-
     var xzAngularAcceleration = Vec3.length({ x: xAcceleration, y: 0.0, z: zAcceleration });
-    addToAccelerationArray(accelerationArray, xzAngularAcceleration);
-    var averageAngularAcceleration = findAverage(accelerationArray);
-    // var xzAngularAcceleration = Vec3.length({ x: (headPose.angularVelocity.x - oldAngularVelocity.x), y: 0.0, z: (headPose.angularVelocity.z - oldAngularVelocity.z) });
     oldAngularVelocity = {x:headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z};
     // print("magnitude of roll pitch angular velocity------------ " + xzAngularVelocity);
     // print("ratio of angular to translational velocity " + xzAngularVelocity / totalHeadVelocity);
@@ -248,29 +365,29 @@ function update(dt) {
     // print("magnitude of roll pitch angular acceleration------------ " + averageAngularAcceleration);
     // print("the angle of the head is ........... " + Vec3.length({ x: headEulers.x, y: 0.0, z: headEulers.z }));
     // If the head is not level, we cannot step. 
-    var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
+    var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
+        && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     
     var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
-    print("hand velocities " + Vec3.length(leftHandPose.velocity) + " " + Vec3.length(rightHandPose.velocity));
-
+    // print("hand velocities " + Vec3.length(leftHandPose.velocity) + " " + Vec3.length(rightHandPose.velocity));
+    
     //  are we off the base of support, losing height and tilting the head 
     // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
     // then we can translate
     //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
-    if (!inSupport && (xzAngularVelocity < 0.25) && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE)) {
-        // && ((!leftHandPose.valid || handDotHead[LEFT] > 0.5) && (Vec3.length(leftHandPose.velocity) > 0.15)) && ((!rightHandPose.valid || handDotHead[RIGHT] > 0.5) && (Vec3.length(rightHandPose.velocity) > 0.15))) {
+    if (!inSupport && (xzAngularVelocity < angularVelocityThreshold) && (heightDifferenceFromAverage < maxHeightChange)) {
+        // && ((!leftHandPose.valid || handDotHead[LEFT] > 0.5) && (Vec3.length(leftHandPose.velocity) > 0.15)) 
+        // && ((!rightHandPose.valid || handDotHead[RIGHT] > 0.5) && (Vec3.length(rightHandPose.velocity) > 0.15))) {
         isStepping = true;
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
             MyAvatar.triggerHorizontalRecenter();
             //  RESET_MODE = true;
             //  wait half a second to trigger again.
-            stepTimer = 0.5;
+            stepTimer = 0.6;
         }
-    } else if (headSwayCount > 0) {
-        headSwayCount--;
     }
     stepTimer -= dt;
     if (isStepping && (lateralDistanceFromAverage < DONE_STEPPING_DISTANCE)) {
@@ -297,7 +414,7 @@ function update(dt) {
     var angleToRight = limitAngle(azimuth - Quat.safeEulerAngles(hipToHandAverage[RIGHT]).y); 
     var angleToMarker = limitAngle(azimuth - lastHeadAzimuth);
     
-    var leftRightMidpoint = (Quat.safeEulerAngles(hipToHandAverage[LEFT]).y + Quat.safeEulerAngles(hipToHandAverage[RIGHT]).y)/2.0;
+    var leftRightMidpoint = (Quat.safeEulerAngles(hipToHandAverage[LEFT]).y + Quat.safeEulerAngles(hipToHandAverage[RIGHT]).y) / 2.0;
     //  lets try using this 100% of the time first.
 
     //  head has turned more than threshold minimum.
@@ -314,10 +431,7 @@ function update(dt) {
         //  hipsRotation = {x: 0,y: 1,z: 0,w: 0};
         hipsRotation = Quat.angleAxis(averageAzimuth, { x: 0, y: 1, z: 0 });
 
-    }
-    //  print("hips rotation step- js " + hipsRotation.x + " " + hipsRotation.y + " " + hipsRotation.z + " " + hipsRotation.w);
-    var hipsRotMyAvatar = MyAvatar.getAbsoluteJointRotationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-        
+    }  
     if (Math.abs(leftRightMidpoint) > 20) {
         if (Math.abs(leftRightMidpoint) > 60) {
             azimuthChangeTimer += 2 * dt;
@@ -404,9 +518,22 @@ function update(dt) {
     }
 }
 
+tablet.screenChanged.connect(onScreenChanged);
+    
+function shutdownTabletApp() {
+    // GlobalDebugger.stop();
+    tablet.removeButton(tabletButton);
+    if (activated) {
+        tablet.webEventReceived.disconnect(onWebEventReceived);
+        tablet.gotoHomeScreen();
+    }
+    tablet.screenChanged.disconnect(onScreenChanged);
+}
+
 Script.update.connect(update);
 Controller.keyPressEvent.connect(onKeyPress);
 Script.scriptEnding.connect(function () {
     Script.update.disconnect(update);
+    shutdownTabletApp();
 });
 
