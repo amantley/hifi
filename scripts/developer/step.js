@@ -10,7 +10,17 @@ var messageFrequency = 3;
 var LEFT = 0;
 var RIGHT = 1;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
-var angularVelocityThreshold = 0.25;
+// in centimeters
+var DEFAULT_ANTERIOR = 14.0;
+var DEFAULT_POSTERIOR = 14.0;
+var DEFAULT_LATERAL = 10.0;
+var DEFAULT_HEIGHT_DIFFERENCE = -1.0;
+// zero to ten
+var DEFAULT_ANGULAR_VELOCITY = 7.0;
+var DEFAULT_HAND_VELOCITY = -10.0;
+var DEFAULT_ANGULAR_HAND_VELOCITY = 7.0;
+
+var angularVelocityThreshold = 0.3;
 
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
 
@@ -96,8 +106,9 @@ var headAverageEulers;
 var oldAngularVelocity = { x: 0.0, y: 0.0, z: 0.0 };
 var headSwayCount = 0;
 var accelerationArray = new Array(30);
-var headToHandVelocityRatio = 1.0;
 var debugDrawBase = true;
+var handVelocityThreshold = -1.0;
+var handAngularVelocityThreshold = 0.3;
 
 function drawBase() {
     // transform corners into world space, for rendering.
@@ -107,7 +118,7 @@ function drawBase() {
     var worldPointLb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backLeft));
     var worldPointRb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backRight));
     
-    //print("world point is left front is: " + worldPointLf.x + " " + worldPointLf.y + " " + worldPointLf.z);
+    // print("world point is left front is: " + worldPointLf.x + " " + worldPointLf.y + " " + worldPointLf.z);
     print("front left point is " + frontLeft.x + " " + frontLeft.y + " " + frontLeft.z);
 
     var GREEN = { r: 0, g: 1, b: 0, a: 1 };
@@ -127,14 +138,14 @@ function onKeyPress(event) {
 }
 
 var TABLET_BUTTON_NAME = "STEP";
-var HTML_URL = Script.resolvePath("file:///c:/angus/javascript_bak/stepApp/stepApp.html");
+var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
     
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 var tabletButton = tablet.addButton({
     text: TABLET_BUTTON_NAME,
-    icon: Script.resolvePath("file:///c:/angus/javascript_bak/stepApp/step2.svg"),
-    activeIcon: Script.resolvePath("https://hifi-content.s3.amazonaws.com/luis/flowFiles/flow-a.svg")
+    icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg"),
+    activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg")
 });
 
 var activated = false;
@@ -153,21 +164,36 @@ function onWebEventReceived(msg) {
     var message = JSON.parse(msg);
     print(" we have a message from html dialog " + message.type);
     switch (message.type) {
-        case "onAnteriorPosteriorBaseSlider":
+        case "onAnteriorBaseSlider":
             print("anterior slider " + message.data.value);
-            setAntPostDistance(message.data.value);
+            setAnteriorDistance(message.data.value);
+            break;
+        case "onPosteriorBaseSlider":
+            print("posterior slider " + message.data.value);
+            setPosteriorDistance(message.data.value);
             break;
         case "onLateralBaseSlider":
             print("lateral slider " + message.data.value);
             setLateralDistance(message.data.value);
             break;
         case "onAngularVelocitySlider":
-            print("message value " + message.data.value);
+            print("angular velocity value " + message.data.value);
             setAngularThreshold(message.data.value);
             break;
         case "onHeightDifferenceSlider":
             print("height slider " + message.data.value);
             setHeightThreshold(message.data.value);
+            break;
+        case "onHandsVelocitySlider":
+            print("hands velocity slider " + message.data.value);
+            setHandVelocityThreshold(message.data.value);
+            break;
+        case "onHandsAngularVelocitySlider":
+            print("hands angular velocity slider " + message.data.value);
+            setHandAngularVelocityThreshold(message.data.value);
+            break;
+        case "onCreateStepApp":
+            print("on create step app " + message.data.value);
             break;
         default:
             print("unknown message from step html!!");
@@ -191,29 +217,32 @@ function onScreenChanged(type, url) {
     } else {
         // tabletButton.editProperties({isActive: false});
         if (activated) {
+            setHandAngularVelocityThreshold(DEFAULT_ANGULAR_HAND_VELOCITY);
+            setHandVelocityThreshold(DEFAULT_HAND_VELOCITY);
+            setHeightThreshold(DEFAULT_HEIGHT_DIFFERENCE);
+            setAnteriorDistance(DEFAULT_ANTERIOR);
+            setPosteriorDistance(DEFAULT_POSTERIOR);
+            setLateralDistance(DEFAULT_LATERAL);
+            setAngularThreshold(DEFAULT_ANGULAR_VELOCITY);
             // disconnect from event bridge
             tablet.webEventReceived.disconnect(onWebEventReceived);
         }
         activated = false;
     }
 }
-
 tablet.screenChanged.connect(onScreenChanged);
-
-
-
 
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
 }
 
 function setAngularThreshold(num) {
-    angularVelocityThreshold = num/10.0;
+    angularVelocityThreshold = (10.0 - num) / 10.0;
     print("angular threshold " + angularVelocityThreshold);
 }
 
 function setHeightThreshold(num) {
-    maxHeightChange = num/100.0;
+    maxHeightChange = -num/100.0;
     print("height threshold " + maxHeightChange);
 }
 
@@ -226,11 +255,28 @@ function setLateralDistance(num) {
     print("lateral distance  " + lateralEdge);
 }
 
-function setAntPostDistance(num) {
+function setAnteriorDistance(num) {
     frontEdge = num/100.0;
     frontLeft.z = -frontEdge;
     frontRight.z = -frontEdge;
-    print("anterior posterior distance " + frontEdge);
+    print("anterior distance " + frontEdge);
+}
+
+function setPosteriorDistance(num) {
+    backEdge = num / 100.0;
+    backLeft.z = backEdge;
+    backRight.z = backEdge;
+    print("posterior distance " + frontEdge);
+}
+
+function setHandAngularVelocityThreshold(num) {
+    handAngularVelocityThreshold = (10.0 - num) / 10.0;
+    print("hand angular velocity threshold " + handAngularVelocityThreshold);
+}
+
+function setHandVelocityThreshold(num) {
+    handVelocityThreshold = num/10.0;
+    print("hand velocity threshold " + handVelocityThreshold);
 }
 
 function withinBaseOfSupport(pos) {
@@ -300,7 +346,6 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
 
 function update(dt) {
     if (debugDrawBase) {
-        //print("calling drawbase");
         drawBase();
     }
     var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
@@ -352,6 +397,7 @@ function update(dt) {
     //     (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
     var xzAngularVelocity = Vec3.length({ x: headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z });
     var xzRHandAngularVelocity = Vec3.length({ x: rightHandPose.angularVelocity.x, y: 0.0, z: rightHandPose.angularVelocity.z });
+    var xzLHandAngularVelocity = Vec3.length({ x: leftHandPose.angularVelocity.x, y: 0.0, z: leftHandPose.angularVelocity.z });
     var xzRHandVelocity = Vec3.length({ x: rightHandPose.velocity.x, y: 0.0, z: rightHandPose.velocity.z });
 
     var xAcceleration = headPose.angularVelocity.x - oldAngularVelocity.x;
@@ -385,9 +431,10 @@ function update(dt) {
     // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
     // then we can translate
     //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
-    if (!inSupport && (xzAngularVelocity < angularVelocityThreshold) && (heightDifferenceFromAverage < maxHeightChange)) {
-        // && ((!leftHandPose.valid || handDotHead[LEFT] > 0.5) && (Vec3.length(leftHandPose.velocity) > 0.15)) 
-        // && ((!rightHandPose.valid || handDotHead[RIGHT] > 0.5) && (Vec3.length(rightHandPose.velocity) > 0.15))) {
+    if (!inSupport && (xzAngularVelocity < angularVelocityThreshold) && (heightDifferenceFromAverage < maxHeightChange)
+         && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > 0.00001)) 
+         && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > 0.00001))
+         && (xzRHandAngularVelocity < handAngularVelocityThreshold) && (xzLHandAngularVelocity < handAngularVelocityThreshold)) {
         isStepping = true;
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
@@ -508,8 +555,6 @@ function update(dt) {
         //  Update angle from hips to hand, to be used for turning 
         var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
         hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
-        // headToHandVelocityRatio = Vec3.length(lateralPoseVelocity) / Vec3.length(lateralHeadVelocity);
-        // print("lateral velocity ratio " + headToHandVelocityRatio);
     }
 
     //  If the velocity of the hands in direction of head scaled by velocity of head is enough,
@@ -525,8 +570,6 @@ function update(dt) {
         handSteppingTimer = 0;
     }
 }
-
-
     
 function shutdownTabletApp() {
     // GlobalDebugger.stop();
@@ -544,4 +587,3 @@ Script.scriptEnding.connect(function () {
     Script.update.disconnect(update);
     shutdownTabletApp();
 });
-
