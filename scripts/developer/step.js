@@ -1,6 +1,6 @@
 /* jslint bitwise: true */
 
-/* global Script, Vec3, MyAvatar Tablet Messages Quat DebugDraw Mat4 Entities Xform Controller Camera*/
+/* global Script, Vec3, MyAvatar, Tablet, Messages, Quat, DebugDraw, Mat4, Entities, Xform, Controller, Camera*/
 
 Script.registerValue("STEPAPP", true);
 
@@ -101,23 +101,22 @@ var debugDrawBase = true;
 
 function drawBase() {
     // transform corners into world space, for rendering.
-    var xform = new Xform(MyAvatar.orientation, MyAvatar.position);
-    var worldPointLf = xform.xformPoint(frontLeft);
-    var worldPointRf = xform.xformPoint(frontRight);
-    var worldPointLb = xform.xformPoint(backLeft);
-    var worldPointRb = xform.xformPoint(backRight);
-    worldPointLf = -0.85;
-    worldPointRf = -0.85;
-    worldPointLb = -0.85;
-    worldPointRb = -0.85;
+    // var avatarXform = new Xform(MyAvatar.orientation, MyAvatar.position);
+    var worldPointLf = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, frontLeft));
+    var worldPointRf = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, frontRight));
+    var worldPointLb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backLeft));
+    var worldPointRb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backRight));
     
-    GREEN = { r: 0, g: 1, b: 0, a: 1 };
+    //print("world point is left front is: " + worldPointLf.x + " " + worldPointLf.y + " " + worldPointLf.z);
+    print("front left point is " + frontLeft.x + " " + frontLeft.y + " " + frontLeft.z);
+
+    var GREEN = { r: 0, g: 1, b: 0, a: 1 };
     
     // draw border
     DebugDraw.drawRay(worldPointLf, worldPointRf, GREEN);
-    DebugDraw.drawRay(worldPointRf, worldPointsRb, GREEN);
-    DebugDraw.drawRay(worldPointRb, worldPointsLb, GREEN);
-    DebugDraw.drawRay(worldPointLb, worldPointsLf, GREEN);
+    DebugDraw.drawRay(worldPointRf, worldPointRb, GREEN);
+    DebugDraw.drawRay(worldPointRb, worldPointLb, GREEN);
+    DebugDraw.drawRay(worldPointLb, worldPointLf, GREEN);
 }
 
 function onKeyPress(event) {
@@ -128,15 +127,19 @@ function onKeyPress(event) {
 }
 
 var TABLET_BUTTON_NAME = "STEP";
-var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+var HTML_URL = Script.resolvePath("file:///c:/angus/javascript_bak/stepApp/stepApp.html");
     
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+
 var tabletButton = tablet.addButton({
     text: TABLET_BUTTON_NAME,
     icon: Script.resolvePath("file:///c:/angus/javascript_bak/stepApp/step2.svg"),
     activeIcon: Script.resolvePath("https://hifi-content.s3.amazonaws.com/luis/flowFiles/flow-a.svg")
 });
+
 var activated = false;
+var documentLoaded = false;
+
 function manageClick() {
     if (activated) {
         tablet.gotoHomeScreen();
@@ -145,29 +148,6 @@ function manageClick() {
     }
 }
 tabletButton.clicked.connect(manageClick);
-
-function onScreenChanged(type, url) {     
-    print("Screen changed");
-    if (type === "Web" && url === HTML_URL) {
-        // tabletButton.editProperties({isActive: true});
-        if (!activated) {
-            // hook up to event bridge
-            tablet.webEventReceived.connect(onWebEventReceived);
-            print("after connect web event");
-            Script.setTimeout(function() {
-                print("step app is loaded: ");
-            }, 500);
-        }
-        activated = true;
-    } else {
-        // tabletButton.editProperties({isActive: false});
-        if (activated) {
-            // disconnect from event bridge
-            tablet.webEventReceived.disconnect(onWebEventReceived);
-        }
-        activated = false;
-    }
-}
 
 function onWebEventReceived(msg) {
     var message = JSON.parse(msg);
@@ -195,23 +175,50 @@ function onWebEventReceived(msg) {
     }
 }
 
+function onScreenChanged(type, url) {     
+    print("Screen changed");
+    if (type === "Web" && url === HTML_URL) {
+        // tabletButton.editProperties({isActive: true});
+        if (!activated) {
+            // hook up to event bridge
+            tablet.webEventReceived.connect(onWebEventReceived);
+            print("after connect web event");
+            Script.setTimeout(function() {
+                print("step app is loaded: " + documentLoaded);
+            }, 500);
+        }
+        activated = true;
+    } else {
+        // tabletButton.editProperties({isActive: false});
+        if (activated) {
+            // disconnect from event bridge
+            tablet.webEventReceived.disconnect(onWebEventReceived);
+        }
+        activated = false;
+    }
+}
+
+tablet.screenChanged.connect(onScreenChanged);
+
+
+
 
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
 }
 
 function setAngularThreshold(num) {
-    angularVelocityThreshold = num;
+    angularVelocityThreshold = num/10.0;
     print("angular threshold " + angularVelocityThreshold);
 }
 
 function setHeightThreshold(num) {
-    maxHeightChange = num;
+    maxHeightChange = num/100.0;
     print("height threshold " + maxHeightChange);
 }
 
 function setLateralDistance(num) {
-    lateralEdge = num;
+    lateralEdge = num/100.0;
     frontLeft.x = -lateralEdge;
     frontRight.x = lateralEdge;
     backLeft.x = -lateralEdge;
@@ -220,9 +227,9 @@ function setLateralDistance(num) {
 }
 
 function setAntPostDistance(num) {
-    frontEdge = num;
-    frontLeft.z = frontEdge;
-    frontRight.z = frontEdge;
+    frontEdge = num/100.0;
+    frontLeft.z = -frontEdge;
+    frontRight.z = -frontEdge;
     print("anterior posterior distance " + frontEdge);
 }
 
@@ -293,6 +300,7 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
 
 function update(dt) {
     if (debugDrawBase) {
+        //print("calling drawbase");
         drawBase();
     }
     var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
@@ -518,7 +526,7 @@ function update(dt) {
     }
 }
 
-tablet.screenChanged.connect(onScreenChanged);
+
     
 function shutdownTabletApp() {
     // GlobalDebugger.stop();
