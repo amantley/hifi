@@ -11,14 +11,15 @@ var LEFT = 0;
 var RIGHT = 1;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
 // in centimeters
-var DEFAULT_ANTERIOR = 14.0;
-var DEFAULT_POSTERIOR = 14.0;
-var DEFAULT_LATERAL = 10.0;
-var DEFAULT_HEIGHT_DIFFERENCE = -1.0;
+var DEFAULT_ANTERIOR = 0.14;
+var DEFAULT_POSTERIOR = 0.14;
+var DEFAULT_LATERAL = 0.10;
+var DEFAULT_HEIGHT_DIFFERENCE = -0.01;
 // zero to ten
-var DEFAULT_ANGULAR_VELOCITY = 7.0;
-var DEFAULT_HAND_VELOCITY = -10.0;
-var DEFAULT_ANGULAR_HAND_VELOCITY = 7.0;
+var DEFAULT_ANGULAR_VELOCITY = 0.3;
+var DEFAULT_HAND_VELOCITY = -1.0;
+var DEFAULT_ANGULAR_HAND_VELOCITY = 0.3;
+var VELOCITY_EPSILON = 0.00001;
 
 var angularVelocityThreshold = 0.3;
 
@@ -166,34 +167,34 @@ function onWebEventReceived(msg) {
     switch (message.type) {
         case "onAnteriorBaseSlider":
             print("anterior slider " + message.data.value);
-            setAnteriorDistance(message.data.value);
+            setAnteriorDistance(message.data.value / 100.0);
             break;
         case "onPosteriorBaseSlider":
             print("posterior slider " + message.data.value);
-            setPosteriorDistance(message.data.value);
+            setPosteriorDistance(message.data.value / 100.0);
             break;
         case "onLateralBaseSlider":
             print("lateral slider " + message.data.value);
-            setLateralDistance(message.data.value);
+            setLateralDistance(message.data.value / 100.0);
             break;
         case "onAngularVelocitySlider":
             print("angular velocity value " + message.data.value);
-            setAngularThreshold(message.data.value);
+            setAngularThreshold((10.0 - message.data.value) / 10.0);
             break;
         case "onHeightDifferenceSlider":
             print("height slider " + message.data.value);
-            setHeightThreshold(message.data.value);
+            setHeightThreshold(-(message.data.value / 100.0));
             break;
         case "onHandsVelocitySlider":
             print("hands velocity slider " + message.data.value);
-            setHandVelocityThreshold(message.data.value);
+            setHandVelocityThreshold(message.data.value / 10.0);
             break;
         case "onHandsAngularVelocitySlider":
             print("hands angular velocity slider " + message.data.value);
-            setHandAngularVelocityThreshold(message.data.value);
+            setHandAngularVelocityThreshold((10.0 - message.data.value) / 10.0);
             break;
         case "onCreateStepApp":
-            print("on create step app " + message.data.value);
+            print("on create step app ");
             break;
         default:
             print("unknown message from step html!!");
@@ -237,17 +238,17 @@ function isInsideLine(a, b, c) {
 }
 
 function setAngularThreshold(num) {
-    angularVelocityThreshold = (10.0 - num) / 10.0;
+    angularVelocityThreshold = num;
     print("angular threshold " + angularVelocityThreshold);
 }
 
 function setHeightThreshold(num) {
-    maxHeightChange = -num/100.0;
+    maxHeightChange = num;
     print("height threshold " + maxHeightChange);
 }
 
 function setLateralDistance(num) {
-    lateralEdge = num/100.0;
+    lateralEdge = num;
     frontLeft.x = -lateralEdge;
     frontRight.x = lateralEdge;
     backLeft.x = -lateralEdge;
@@ -256,26 +257,26 @@ function setLateralDistance(num) {
 }
 
 function setAnteriorDistance(num) {
-    frontEdge = num/100.0;
+    frontEdge = num;
     frontLeft.z = -frontEdge;
     frontRight.z = -frontEdge;
     print("anterior distance " + frontEdge);
 }
 
 function setPosteriorDistance(num) {
-    backEdge = num / 100.0;
+    backEdge = num;
     backLeft.z = backEdge;
     backRight.z = backEdge;
     print("posterior distance " + frontEdge);
 }
 
 function setHandAngularVelocityThreshold(num) {
-    handAngularVelocityThreshold = (10.0 - num) / 10.0;
+    handAngularVelocityThreshold = num;
     print("hand angular velocity threshold " + handAngularVelocityThreshold);
 }
 
 function setHandVelocityThreshold(num) {
-    handVelocityThreshold = num/10.0;
+    handVelocityThreshold = num;
     print("hand velocity threshold " + handVelocityThreshold);
 }
 
@@ -409,38 +410,24 @@ function update(dt) {
         zAcceleration = 0.0;
     }
     var xzAngularAcceleration = Vec3.length({ x: xAcceleration, y: 0.0, z: zAcceleration });
-    oldAngularVelocity = {x:headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z};
-    // print("magnitude of roll pitch angular velocity------------ " + xzAngularVelocity);
-    // print("ratio of angular to translational velocity " + xzAngularVelocity / totalHeadVelocity);
-    // print("hand dot head left " + handDotHead[LEFT]);
-    // print("hand left velocity " + Vec3.length(leftHandPose.velocity));
-    // print("magnitude of roll pitch right hand angular velocity------------ " + xzRHandAngularVelocity);
-    // print("magnitude of right hand velocity------------ " + xzRHandVelocity);
-    // print("magnitude of roll pitch angular acceleration------------ " + averageAngularAcceleration);
-    // print("the angle of the head is ........... " + Vec3.length({ x: headEulers.x, y: 0.0, z: headEulers.z }));
-    // If the head is not level, we cannot step. 
+    oldAngularVelocity = {x:headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z}; 
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     
     var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
-    // print("hand velocities " + Vec3.length(leftHandPose.velocity) + " " + Vec3.length(rightHandPose.velocity));
-    
     //  are we off the base of support, losing height and tilting the head 
     // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
     // then we can translate
-    //  && (heightDifferenceFromAverage < MAX_HEIGHT_CHANGE) && isHeadLevel &&
     if (!inSupport && (xzAngularVelocity < angularVelocityThreshold) && (heightDifferenceFromAverage < maxHeightChange)
-         && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > 0.00001)) 
-         && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > 0.00001))
+         && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)) 
+         && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))
          && (xzRHandAngularVelocity < handAngularVelocityThreshold) && (xzLHandAngularVelocity < handAngularVelocityThreshold)) {
         isStepping = true;
         if (STEPTURN && (stepTimer < 0.0) ) {
             print("trigger recenter========================================================");
             MyAvatar.triggerHorizontalRecenter();
-            //  RESET_MODE = true;
-            //  wait half a second to trigger again.
             stepTimer = 0.6;
         }
     }
