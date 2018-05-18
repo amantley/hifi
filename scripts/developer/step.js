@@ -4,12 +4,10 @@
 
 Script.registerValue("STEPAPP", true);
 
-var MESSAGE_CHANNEL = "Hifi-Step-Cg"; 
-var messageFrequency = 3;
-
 var LEFT = 0;
 var RIGHT = 1;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
+var TABLET_BUTTON_NAME = "STEP";
 // in centimeters
 var DEFAULT_ANTERIOR = 0.14;
 var DEFAULT_POSTERIOR = 0.14;
@@ -20,18 +18,17 @@ var DEFAULT_ANGULAR_VELOCITY = 0.3;
 var DEFAULT_HAND_VELOCITY = -1.0;
 var DEFAULT_ANGULAR_HAND_VELOCITY = 0.3;
 var VELOCITY_EPSILON = 0.00001;
-
-var angularVelocityThreshold = 0.3;
-
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
-
-//  Pitch and Roll more than these number of degrees from long-term average prevent stepping.
 var MAX_LEVEL_PITCH = 3;                        
 var MAX_LEVEL_ROLL = 3;
 
-//  How far can the head move down before blocking stepping?
-//  .0075 was old value. 
 var maxHeightChange = 0.010;
+var angularVelocityThreshold = 0.3;         
+var handVelocityThreshold = -1.0;
+var handAngularVelocityThreshold = 0.3;
+var lateralEdge = 0.14;
+var frontEdge = -0.10;
+var backEdge = 0.13;
 
 //  this should be changed by the actual base of support of the person? or Avatar?
 //  You must have moved at least this far laterally to take a step
@@ -57,20 +54,12 @@ var MY_HEIGHT = 1.15;
 var modeArray = new Array(100);
 var modeHeight = -10.0;
 var stepTimer = -1.0;
-
-var leaningDot = 1.0;
-var leaningDotAverage = 1.0;
 var torsoLength = 1.0;
 var defaultLength = 1.0;
-
 var hipsRotation = {x: 0, y: 0, z: 0, w: 1};
 var hipsPosition = {x: 0, y: 0, z: 0};
 var spine2Rotation = {x: 0, y: -0.85, z: 0, w: 0.5};
 var spine2Position = { x: 0, y: 0, z: 0 };
-
-var lateralEdge = 0.14;// was 0.09
-var frontEdge = -0.10;// fmi was -0.07
-var backEdge = 0.13;
 var frontLeft = { x: -lateralEdge, y: 0, z: frontEdge };
 var frontRight = { x: lateralEdge, y: 0, z: frontEdge };
 var backLeft = { x: -lateralEdge, y: 0, z: backEdge };
@@ -79,8 +68,7 @@ var backRight = { x: lateralEdge, y: 0, z: backEdge };
 var inFront = Vec3.sum(MyAvatar.position, Vec3.multiply(1.5, Quat.getFront(MyAvatar.orientation)));
 
 var handDotHead = [];
-var headAveragePosition = Vec3.sum(inFront, { x: 0, y: 0.3, z: 0 });
-var headPosition = headAveragePosition;
+var headPosition;
 var headAverageOrientation = MyAvatar.orientation;
 var averageHeight = 1.0;
 var handPosition;
@@ -100,7 +88,7 @@ var headPosAvatarSpace;
 var rightHandPosAvatarSpace;
 var leftHandPosAvatarSpace; 
 var hands = [];
-var head, headAverage, lastAzimuthMarker, headAzimuthMarker, leftAzimuthMarker, rightAzimuthMarker;
+var head, headAverage;
 //  createMarkers();
 var headEulers;
 var headAverageEulers;
@@ -108,9 +96,19 @@ var oldAngularVelocity = { x: 0.0, y: 0.0, z: 0.0 };
 var headSwayCount = 0;
 var accelerationArray = new Array(30);
 var debugDrawBase = true;
-var handVelocityThreshold = -1.0;
-var handAngularVelocityThreshold = 0.3;
+var activated = false;
+var documentLoaded = false;
 
+var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+    
+var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+
+var tabletButton = tablet.addButton({
+    text: TABLET_BUTTON_NAME,
+    icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg"),
+    activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg")
+});
+tabletButton.clicked.connect(manageClick);
 function drawBase() {
     // transform corners into world space, for rendering.
     // var avatarXform = new Xform(MyAvatar.orientation, MyAvatar.position);
@@ -138,19 +136,6 @@ function onKeyPress(event) {
     }
 }
 
-var TABLET_BUTTON_NAME = "STEP";
-var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
-    
-var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
-
-var tabletButton = tablet.addButton({
-    text: TABLET_BUTTON_NAME,
-    icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg"),
-    activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg")
-});
-
-var activated = false;
-var documentLoaded = false;
 
 function manageClick() {
     if (activated) {
@@ -159,7 +144,6 @@ function manageClick() {
         tablet.gotoWebScreen(HTML_URL);
     }
 }
-tabletButton.clicked.connect(manageClick);
 
 function onWebEventReceived(msg) {
     var message = JSON.parse(msg);
@@ -338,6 +322,8 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
             print("resetting the mode............................................. ");
             print("resetting the mode............................................. ");
             RESET_MODE = true;
+            MyAvatar.triggerHorizontalRecenter();
+            stepTimer = 0.6;
             return currentHeight - 0.02;
         } else {
             return currentMode; 
@@ -349,7 +335,6 @@ function update(dt) {
     if (debugDrawBase) {
         drawBase();
     }
-    var currentHipsPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
     var currentHeadPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
     var defaultHipsPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
     var defaultHeadPos = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
@@ -357,13 +342,7 @@ function update(dt) {
     var headMinusHipLean = Vec3.subtract(currentHeadPos,defaultHipsPos);
     torsoLength = Vec3.length(headMinusHipLean);
 
-    leaningDot = Vec3.dot(Vec3.normalize(headMinusHipLean),{x: 0,y: 1,z: 0});
-    leaningDotAverage = leaningDot * HEIGHT_AVERAGING_RATE + leaningDotAverage * (1.0 - HEIGHT_AVERAGING_RATE);
     
-    var sensorToWorldMatrix = MyAvatar.getSensorToWorldMatrix();
-    var worldToSensorMatrix = Mat4.inverse(sensorToWorldMatrix);
-    var avatarToWorldMatrix = Mat4.createFromRotAndTrans(MyAvatar.orientation, MyAvatar.position);
-
     //  Update head information
     var headPose = Controller.getPoseValue(Controller.Standard.Head);
     var rightHandPose = Controller.getPoseValue(Controller.Standard.RightHand);
@@ -388,35 +367,36 @@ function update(dt) {
     addToModeArray(modeArray,headPose.translation.y);
     modeHeight = findMode(modeArray, modeHeight, torsoLength, defaultLength, headPose.translation.y);
     // print("the mode height is currently....  " + modeHeight + " user height " + headPose.translation.y);
-    // DebugDraw.addMyAvatarMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, COLOR_LEVEL);
-    DebugDraw.addMarker("avatar_origin", { x: 0, y: 0, z: 0, w: 1 }, MyAvatar.position, { x: 0, y: 1, z: 0 });
-    // print("current head x " + headPose.translation.x );// + " " + currentHipsPos.y + " " + currentHipsPos.z);
-    // print("current head height ....................... " + headPose.translation.y + ",,,,,,,,,,,,,,,,,,," + modeHeight);
     var totalHeadVelocity = Vec3.length(headPose.velocity);
-    // print("current head velocity ....................... " + totalHeadVelocity);
-    // print("current head angular velocity ....................... " + (Math.floor(headPose.angularVelocity.x * 100)) / 100.00 + " " + 
-    //     (Math.floor(headPose.angularVelocity.y * 100)) / 100.00 + " " + (Math.floor(headPose.angularVelocity.z * 100)) / 100.00);
     var xzAngularVelocity = Vec3.length({ x: headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z });
     var xzRHandAngularVelocity = Vec3.length({ x: rightHandPose.angularVelocity.x, y: 0.0, z: rightHandPose.angularVelocity.z });
     var xzLHandAngularVelocity = Vec3.length({ x: leftHandPose.angularVelocity.x, y: 0.0, z: leftHandPose.angularVelocity.z });
-    var xzRHandVelocity = Vec3.length({ x: rightHandPose.velocity.x, y: 0.0, z: rightHandPose.velocity.z });
-
-    var xAcceleration = headPose.angularVelocity.x - oldAngularVelocity.x;
-    var zAcceleration = headPose.angularVelocity.z - oldAngularVelocity.z;
-    if (xAcceleration < 0.0) {
-        xAcceleration = 0.0;
-    }
-    if (zAcceleration < 0.0) {
-        zAcceleration = 0.0;
-    }
-    var xzAngularAcceleration = Vec3.length({ x: xAcceleration, y: 0.0, z: zAcceleration });
-    oldAngularVelocity = {x:headPose.angularVelocity.x, y: 0.0, z: headPose.angularVelocity.z}; 
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     
-    var lateralDistanceFromAverage = { x: 0, y: 0, z: 0 };
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
+    // Check the hands one at a time 
+    for (var hand = LEFT; hand <= RIGHT; hand++) {
+        //  Update hand object 
+        var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
+        var lateralPoseVelocity = {x:0, y:0, z:0};
+        if (pose.valid && headPose.valid) {
+            lateralPoseVelocity = pose.velocity;
+            lateralPoseVelocity.y = 0;
+            var lateralHeadVelocity = headPose.velocity;
+            lateralHeadVelocity.y = 0;
+            handDotHead[hand] = Vec3.dot(Vec3.normalize(lateralPoseVelocity), Vec3.normalize(lateralHeadVelocity));
+        }
+
+        //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
+        handPosition = (hand === 1) ? rightHandPosAvatarSpace : leftHandPosAvatarSpace;
+        handOrientation = Quat.multiply(MyAvatar.orientation, pose.rotation);
+        //  Update angle from hips to hand, to be used for turning 
+        var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
+        hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
+    }
+    
     //  are we off the base of support, losing height and tilting the head 
     // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
     // then we can translate
@@ -432,16 +412,12 @@ function update(dt) {
         }
     }
     stepTimer -= dt;
-    if (isStepping && (lateralDistanceFromAverage < DONE_STEPPING_DISTANCE)) {
-        isStepping = false;
-    }
     if (!HMD.active) {
         RESET_MODE = false;
     }
      
     //  Record averages
     headAverageOrientation = Quat.slerp(headAverageOrientation, headOrientation, AVERAGING_RATE);
-    headAveragePosition = Vec3.mix(headAveragePosition, headPosition, AVERAGING_RATE);
     
     //  this will vary with the height of the person being tracked......
     //  one percent of a taller person will give you greater variance in height.
@@ -496,66 +472,7 @@ function update(dt) {
         }
         lastHeadAzimuth = averageAzimuth;
         azimuthChangeTimer = 0;
-    }
-    
-
-    //  original azimuth code from Philip
-    /*
-    if ((Math.abs(angleToMarker) > AZIMUTH_TURN_MIN_DEGREES) &&
-        (angleToLeft * angleToRight < 0) && 
-        (Math.abs(angleToRight / angleToLeft) > 1 / HEAD_HAND_BALANCE) &&
-        (Math.abs(angleToRight / angleToLeft) < HEAD_HAND_BALANCE) ) {
-        headAzimuthMarkerColor = COLOR_IS_STEPPING;
-        azimuthChangeTimer += dt;
-        if (azimuthChangeTimer > AZIMUTH_TIME_SECS) {
-            //  Actually turn 
-            isTurning = true; 
-            if (STEPTURN) {
-                //  MyAvatar.triggerRotationRecenter();
-            }
-            lastHeadAzimuth = azimuth;
-            azimuthChangeTimer = 0;
-        }
-    } else {
-        isTurning = false;
-        headAzimuthMarkerColor = COLOR_RIGHT;
-        azimuthChangeTimer = 0;
-    }
-    */
-
-    //  Check the hands one at a time 
-    for (var hand = LEFT; hand <= RIGHT; hand++) {
-        //  Update hand object 
-        var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
-        var lateralPoseVelocity = {x:0, y:0, z:0};
-        if (pose.valid && headPose.valid) {
-            lateralPoseVelocity = pose.velocity;
-            lateralPoseVelocity.y = 0;
-            var lateralHeadVelocity = headPose.velocity;
-            lateralHeadVelocity.y = 0;
-            handDotHead[hand] = Vec3.dot(Vec3.normalize(lateralPoseVelocity), Vec3.normalize(lateralHeadVelocity));
-        }
-
-        //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
-        handPosition = (hand === 1) ? rightHandPosAvatarSpace : leftHandPosAvatarSpace;
-        handOrientation = Quat.multiply(MyAvatar.orientation, pose.rotation);
-        //  Update angle from hips to hand, to be used for turning 
-        var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
-        hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
-    }
-
-    //  If the velocity of the hands in direction of head scaled by velocity of head is enough,
-    //  trigger a step.  
-    if ((handDotHead[LEFT] > STEP_VELOCITY_THRESHOLD) && (handDotHead[RIGHT] > STEP_VELOCITY_THRESHOLD)) {
-        handSteppingDetect = true;
-        if (STEPTURN) {
-            //  MyAvatar.triggerHorizontalRecenter();
-        }
-        handSteppingTimer += dt;
-    } else {
-        handSteppingDetect = false;
-        handSteppingTimer = 0;
-    }
+    }  
 }
     
 function shutdownTabletApp() {
