@@ -1,6 +1,6 @@
 /* jslint bitwise: true */
 
-/* global Script, Vec3, MyAvatar, Tablet, Messages, Quat, DebugDraw, Mat4, Entities, Xform, Controller, Camera, console*/
+/* global Script, Vec3, MyAvatar, Tablet, Messages, Quat, DebugDraw, Mat4, Entities, Xform, Controller, Camera, console, document*/
 
 Script.registerValue("STEPAPP", true);
 
@@ -99,7 +99,7 @@ var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
 
-var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+var HTML_URL = Script.resolvePath("file:///c:/angus/javascript/stepApp.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -193,6 +193,13 @@ function onScreenChanged(type, url) {
             print("after connect web event");
             Script.setTimeout(function() {
                 print("step app is loaded: " + documentLoaded);
+                tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": 1.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": 2.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": 3.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": 0.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": 2.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": 1.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": 0.0 } }));
             }, 500);
         }
         activated = true;
