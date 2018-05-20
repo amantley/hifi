@@ -200,6 +200,7 @@ function onScreenChanged(type, url) {
                 tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": 2.0 } }));
                 tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": 1.0 } }));
                 tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": 0.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "lateralSignalTrigger", "data": { "value": "blue" } }));
             }, 500);
         }
         activated = true;
