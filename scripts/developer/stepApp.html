@@ -1,0 +1,320 @@
+
+<html>
+  <head>
+    <title>Step App</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="../../../../../system/html/css/edit-style.css">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/css/bootstrap-slider.min.css">
+    <style>
+      body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          color: blue;
+      }
+
+      .top-bar {
+          height: 90px;
+          background: linear-gradient(#2b2b2b, #1e1e1e);
+          font-family: Raleway-Bold;
+          padding-left: 30px;
+          padding-right: 30px;
+          display: flex;
+          align-items: center;
+          position: fixed;
+          width: 480px;
+          top: 0;
+          z-index: 1;
+          font-size: 16px;
+      }
+
+      .content {
+          margin-top: 90px;
+          padding: 30px;
+      }
+
+      .slider {
+        margin-left: 70px;
+      }
+
+    </style> 
+  </head>
+  <body>
+    <div class="top-bar">
+      <div style="font-size:300%;color:red;"><b>Step App</b></div>
+    </div>
+    <div class="content">
+      <div id="properties-list">
+        <div class="property">
+          <label>Front Base&nbsp&nbsp&nbsp</label>
+            <input
+              id="anteriorBase-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[0, 15, 30]"
+              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-min="0"
+              data-slider-max="30"
+              data-slider-step="1"
+              data-slider-value="14"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="frontSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>Back Base&nbsp&nbsp&nbsp</label>
+            <input
+              id="posteriorBase-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[0, 15, 30]"
+              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-min="0"
+              data-slider-max="30"
+              data-slider-step="1"
+              data-slider-value="14"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="backSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>Lateral Base </label>
+            <input
+              id="lateralBase-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[0, 15, 30]"
+              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-min="0"
+              data-slider-max="30"
+              data-slider-step="1"
+              data-slider-value="10"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="lateralSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>HeadAngVel</label>
+            <input
+              id="angularVelocityHead-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[0, 5, 10]"
+              data-slider-ticks-labels='["more", "less", "none"]'
+              data-slider-min="0"
+              data-slider-max="10"
+              data-slider-step="0.1"
+              data-slider-value="7"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="angularHeadSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>Height Differ</label>
+            <input
+              id="heightDifference-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[-5, 0, 5]"
+              data-slider-ticks-labels='["lower", "match height", "higher"]'
+              data-slider-min="-5"
+              data-slider-max="5"
+              data-slider-step="0.5"
+              data-slider-value="-1"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="heightSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>Hands Veloc</label>
+            <input
+              id="handsVelocity-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[-10, 0, 10]"
+              data-slider-ticks-labels='["no match", "50 percent", "total match"]'
+              data-slider-min="-10"
+              data-slider-max="10"
+              data-slider-step=".5"
+              data-slider-value="-10"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="handVelocitySignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<br>
+		<br>
+		<div class="property">
+          <label>HandAngVel</label>
+            <input
+              id="handsAngularVelocity-slider"
+              type="text"
+              data-provide="slider"
+              data-slider-ticks="[0, 5, 10]"
+              data-slider-ticks-labels='["falling", "leaning", "no dip allowed"]'
+              data-slider-min="0"
+              data-slider-max="10"
+              data-slider-step=".1"
+              data-slider-value="7"
+              data-slider-tooltip="show"
+            >
+			<svg height="25" width="30">
+                <circle id="handAngularSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
+            </svg>
+        </div>
+		<input id="button1" type="button" value="Change Color"
+            onclick="changeColor()"/>
+      </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.7.2/bootstrap-slider.min.js"></script>
+    <script>
+	    //
+        //  Created by Angus Antley on 5/15/18
+        //  
+        //
+        //
+        //  Distributed under the Apache License, Version 2.0.
+        //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
+        //
+
+        /* jslint bitwise: true */
+
+        /* global $, EventBridge
+        */
+		function changeColor(id, shade) {
+		    document.getElementById(id).setAttribute("fill", shade);
+		}
+		
+		function emit(eventType, eventData) {
+            var eventObject = {
+            "app": "step",
+            "type": eventType,
+            "data": eventData
+            };
+            EventBridge.emitWebEvent(JSON.stringify(eventObject));
+        }
+		
+		EventBridge.scriptEventReceived.connect(function (msg) {
+            var message = JSON.parse(msg);
+            if (message.type === "trigger") {
+               changeColor(message.id,message.data.value);
+            }			
+            if (message.type === "frontBase") {
+				$("#anteriorBase-slider").data("slider").setValue(message.data.value);
+				var curState = $("#anteriorBase-slider").data("slider").getValue();
+				console.log("the anterior base slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "backBase") {
+				$("#posteriorBase-slider").data("slider").setValue(message.data.value);
+				var curState = $("#posteriorBase-slider").data("slider").getValue();
+				console.log("the posterior base slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "lateralBase") {
+				$("#lateralBase-slider").data("slider").setValue(message.data.value);
+				var curState = $("#lateralBase-slider").data("slider").getValue();
+				console.log("the lateral base slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "angularHeadVelocity") {
+				$("#angularVelocityHead-slider").data("slider").setValue(message.data.value);
+				var curState = $("#angularVelocityHead-slider").data("slider").getValue();
+				console.log("the angular head velocity slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "heightDifference") {
+				$("#heightDifference-slider").data("slider").setValue(message.data.value);
+				var curState = $("#heightDifference-slider").data("slider").getValue();
+				console.log("the height difference slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "handsVelocity") {
+				$("#handsVelocity-slider").data("slider").setValue(message.data.value);
+				var curState = $("#handsVelocity-slider").data("slider").getValue();
+				console.log("the hands velocity slider min is " + JSON.stringify(curState));
+            }
+			if (message.type === "handsAngularVelocity") {
+				$("#handsAngularVelocity-slider").data("slider").setValue(message.data.value);
+				var curState = $("#handsAngularVelocity-slider").data("slider").getValue();
+				console.log("the hands angular velocity slider min is " + JSON.stringify(curState));
+            }
+        });
+		
+		
+        $(document).ready(function () {
+		    emit("ready", null);
+            
+            //$("#anteriorPosteriorBase-slider").slider().on("slide", function(e){
+            //    console.log("slided " + e.value);
+            //    emit("onAnteriorPosteriorBaseSlider", {value: e.value});
+            //});
+			
+			$("#anteriorBase-slider").slider().on("change", function(e){
+			            console.log("anterior " + e.value.newValue);
+					    emit("onAnteriorBaseSlider",{value: e.value.newValue});
+            });
+			
+			$("#posteriorBase-slider").slider().on("change", function(e){
+			            console.log("posterior " + e.value.newValue);
+					    emit("onPosteriorBaseSlider",{value: e.value.newValue});
+            });
+			
+			$("#lateralBase-slider").slider().on("change", function(e){
+			            console.log("lateral " + e.value.newValue);
+					    emit("onLateralBaseSlider",{value: e.value.newValue});
+            });
+			
+			$("#angularVelocityHead-slider").slider().on("change", function(e){
+                console.log("angular velocity " + e.value.newValue);
+                emit("onAngularVelocitySlider", {value: e.value.newValue});
+            });
+			
+			$("#heightDifference-slider").slider().on("change", function(e){
+                console.log("height difference " + e.value.newValue);
+                emit("onHeightDifferenceSlider", {value: e.value.newValue});
+            });
+			
+			$("#handsVelocity-slider").slider().on("change", function(e){
+                console.log("hand velocity " + e.value.newValue);
+                emit("onHandsVelocitySlider", {value: e.value.newValue});
+            });
+			
+			$("#handsAngularVelocity-slider").slider().on("change", function(e){
+                console.log("hand angular velocity " + e.value.newValue);
+                emit("onHandsAngularVelocitySlider", {value: e.value.newValue});
+            });
+			
+			
+            emit("onCreateStepApp", {value: 10.0});
+			
+			//$("#lateralSignal").setAttribute("fill", "blue");
+            //document.getElementById("lateralSignal").r = 200;
+           
+			
+
+        });
+   
+	  </script>
+  </body>
+</html>
