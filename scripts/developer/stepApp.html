@@ -166,7 +166,6 @@
             </svg>
         </div>
 		<br>
-		<br>
 		<div class="property">
           <label>HandAngVel</label>
             <input
@@ -185,8 +184,13 @@
                 <circle id="handAngularSignal" cx="20" cy="10" r="8" stroke="black" stroke-width="1" fill="red" />
             </svg>
         </div>
-		<input id="button1" type="button" value="Change Color"
-            onclick="changeColor()"/>
+		<div class="property">
+		    <label>Fail Safe Triggered</label>
+		    <svg height="45" width="165">
+                <circle id="failsafeSignal" cx="133" cy="22" r="20" stroke="black" stroke-width="1" fill="orange" />
+            </svg>
+		 </div>
+		 <audio id="audio" src="file://c:/dev/hifi_fork/hifi/unpublishedScripts/marketplace/shapes/assets/audio/create.wav" autostart="false" ></audio>
       </div>
     </div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
@@ -221,6 +225,13 @@
 		
 		EventBridge.scriptEventReceived.connect(function (msg) {
             var message = JSON.parse(msg);
+			if (message.type === "failsafe") {
+				changeColor(message.id,message.data.value);
+				if (message.data.value === "green") {
+				   var sound = document.getElementById("audio");
+                   sound.play();
+				}
+			}
             if (message.type === "trigger") {
                changeColor(message.id,message.data.value);
             }			
@@ -265,10 +276,6 @@
         $(document).ready(function () {
 		    emit("ready", null);
             
-            //$("#anteriorPosteriorBase-slider").slider().on("slide", function(e){
-            //    console.log("slided " + e.value);
-            //    emit("onAnteriorPosteriorBaseSlider", {value: e.value});
-            //});
 			
 			$("#anteriorBase-slider").slider().on("change", function(e){
 			            console.log("anterior " + e.value.newValue);
@@ -306,12 +313,7 @@
             });
 			
 			
-            emit("onCreateStepApp", {value: 10.0});
-			
-			//$("#lateralSignal").setAttribute("fill", "blue");
-            //document.getElementById("lateralSignal").r = 200;
-           
-			
+            emit("onCreateStepApp", {value: 10.0});		
 
         });
    

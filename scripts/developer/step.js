@@ -41,10 +41,9 @@ var RECENTER = false;
 MyAvatar.hmdLeanRecenterEnabled = RECENTER;
 var STEPTURN = true;
 var RESET_MODE = false;
-
 var MY_HEIGHT = 1.15;
 
-
+var failsafeFlag = false;
 var maxHeightChange = 0.010;
 var angularVelocityThreshold = 0.3;         
 var handVelocityThreshold = -1.0;
@@ -101,7 +100,7 @@ var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
 
-var HTML_URL = Script.resolvePath("file:///c:/angus/javascript/stepApp.html");
+var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepApp.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -163,7 +162,7 @@ function onWebEventReceived(msg) {
             break;
         case "onAngularVelocitySlider":
             print("angular velocity value " + message.data.value);
-            setAngularThreshold((10.0 - message.data.value) / 10.0);
+            setAngularThreshold(Math.pow(4, (10.0 - message.data.value) / 5.0) - 1.0);
             break;
         case "onHeightDifferenceSlider":
             print("height slider " + message.data.value);
@@ -175,7 +174,8 @@ function onWebEventReceived(msg) {
             break;
         case "onHandsAngularVelocitySlider":
             print("hands angular velocity slider " + message.data.value);
-            setHandAngularVelocityThreshold((10.0 - message.data.value) / 10.0);
+            // the scale of this slider is logarithmic to cover a greater range of values
+            setHandAngularVelocityThreshold(Math.pow(7, (10.0 - message.data.value) / 2.0) - 1.0);
             break;
         case "onCreateStepApp":
             print("on create step app ");
@@ -195,13 +195,13 @@ function onScreenChanged(type, url) {
             print("after connect web event");
             Script.setTimeout(function() {
                 print("step app is loaded: " + documentLoaded);
-                tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": 1.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": 2.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": 3.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": 0.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": 2.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": 1.0 } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": 0.0 } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": 100.0*frontEdge } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": 100.0*backEdge } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": 100.0*lateralEdge } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": (-5.0 * getLog(4, (angularVelocityThreshold + 1)) + 10.0) } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": -100.0*maxHeightChange } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": 10.0*handVelocityThreshold } }));
+                tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": (-2.0*getLog(7,(handAngularVelocityThreshold+1))+10.0) } }));
                 tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id":"frontSignal", "data": { "value": "green" } }));
                 tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
                 tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
@@ -214,18 +214,15 @@ function onScreenChanged(type, url) {
         activated = true;
     } else {
         if (activated) {
-            setHandAngularVelocityThreshold(DEFAULT_ANGULAR_HAND_VELOCITY);
-            setHandVelocityThreshold(DEFAULT_HAND_VELOCITY);
-            setHeightThreshold(DEFAULT_HEIGHT_DIFFERENCE);
-            setAnteriorDistance(DEFAULT_ANTERIOR);
-            setPosteriorDistance(DEFAULT_POSTERIOR);
-            setLateralDistance(DEFAULT_LATERAL);
-            setAngularThreshold(DEFAULT_ANGULAR_VELOCITY);
             // disconnect from event bridge
             tablet.webEventReceived.disconnect(onWebEventReceived);
         }
         activated = false;
     }
+}
+
+function getLog(x, y) {
+    return Math.log(y) / Math.log(x);
 }
 
 function isInsideLine(a, b, c) {
@@ -332,13 +329,12 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
     if (mode > currentMode) {
         return Number(mode);    
     } else {
-        if ((backLength > (defaultBack + 0.10)) || (!RESET_MODE && HMD.active)) {
+        if (failsafeFlag || (!RESET_MODE && HMD.active)) {
             print("resetting the mode....................default " + defaultBack + " head-origin " + backLength);
             print("resetting the mode............................................. ");
             print("resetting the mode............................................. ");
             RESET_MODE = true;
-            // MyAvatar.triggerHorizontalRecenter();
-            // stepTimer = 0.6;
+            failsafeFlag = false;
             stationaryTimer = 0.0;
             return currentHeight - 0.02;
         } else {
@@ -392,7 +388,7 @@ function update(dt) {
     var xzLHandAngularVelocity = Vec3.length({ x: leftHandPose.angularVelocity.x, y: 0.0, z: leftHandPose.angularVelocity.z });
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
-    console.log("console right hand angular velocity " + xzRHandAngularVelocity);
+    //console.log("console right hand angular velocity " + xzRHandAngularVelocity);
 
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
@@ -432,7 +428,9 @@ function update(dt) {
         }
         if (overLateral) {
             // over lateral
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
+        } else {
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "blue" } }));
         }
     } else {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "red" } }));
@@ -440,7 +438,8 @@ function update(dt) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "red" } }));
     }
 
-    // if we have too much angular velocity, thus triggering this break on translation.
+    // console.log("angular velocity threshold " + angularVelocityThreshold);
+    // if we have too much head angular velocity, thus triggering this break on translation.
     if (!(xzAngularVelocity < angularVelocityThreshold)) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "red" } }));
     } else {
@@ -487,9 +486,24 @@ function update(dt) {
             stepTimer = 0.6;
             stationaryTimer = 0.0;
         }
+    } else if (torsoLength > (defaultLength + 0.07)) {
+        // do the failsafe recenter.
+        // failsafeFlag resets the mode.
+        failsafeFlag = true;
+        failsafeSignalTimer = 1.0;
+        stepTimer = 0.6;
+        MyAvatar.triggerHorizontalRecenter();
+        tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "green" } }));
     }
+    
+    if (failsafeSignalTimer < 0.0) {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "orange" } }));
+    }
+
     stepTimer -= dt;
     stationaryTimer += dt;
+    failsafeSignalTimer -= dt;
+
     if (!HMD.active) {
         RESET_MODE = false;
     }
