@@ -54,7 +54,7 @@
               type="text"
               data-provide="slider"
               data-slider-ticks="[0, 15, 30]"
-              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-ticks-labels='["zero", "15cm", "30cm"]'
               data-slider-min="0"
               data-slider-max="30"
               data-slider-step="1"
@@ -74,7 +74,7 @@
               type="text"
               data-provide="slider"
               data-slider-ticks="[0, 15, 30]"
-              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-ticks-labels='["zero", "15cm", "30cm"]'
               data-slider-min="0"
               data-slider-max="30"
               data-slider-step="1"
@@ -94,7 +94,7 @@
               type="text"
               data-provide="slider"
               data-slider-ticks="[0, 15, 30]"
-              data-slider-ticks-labels='["insidecg", "matchcg", "outsidecg"]'
+              data-slider-ticks-labels='["zero", "15cm", "30cm"]'
               data-slider-min="0"
               data-slider-max="30"
               data-slider-step="1"
@@ -113,12 +113,12 @@
               id="angularVelocityHead-slider"
               type="text"
               data-provide="slider"
-              data-slider-ticks="[0, 5, 10]"
-              data-slider-ticks-labels='["more", "less", "none"]'
+              data-slider-ticks="[0, 1, 2]"
+              data-slider-ticks-labels='["high tolerance", "less", "none"]'
               data-slider-min="0"
-              data-slider-max="10"
-              data-slider-step="0.1"
-              data-slider-value="7"
+              data-slider-max="2"
+              data-slider-step="0.02"
+              data-slider-value="1.4"
               data-slider-tooltip="show"
             >
 			<svg height="25" width="30">
@@ -134,7 +134,7 @@
               type="text"
               data-provide="slider"
               data-slider-ticks="[-5, 0, 5]"
-              data-slider-ticks-labels='["lower", "match height", "higher"]'
+              data-slider-ticks-labels='["shorter", "match mode height", "taller"]'
               data-slider-min="-5"
               data-slider-max="5"
               data-slider-step="0.5"
@@ -153,12 +153,12 @@
               id="handsVelocity-slider"
               type="text"
               data-provide="slider"
-              data-slider-ticks="[-10, 0, 10]"
-              data-slider-ticks-labels='["no match", "50 percent", "total match"]'
-              data-slider-min="-10"
-              data-slider-max="10"
-              data-slider-step=".5"
-              data-slider-value="-10"
+              data-slider-ticks="[-1.0, 0, 1.0]"
+              data-slider-ticks-labels='["all directions", "up to 90 deg", "same direction"]'
+              data-slider-min="-1.0"
+              data-slider-max="1.0"
+              data-slider-step=".05"
+              data-slider-value="-1.0"
               data-slider-tooltip="show"
             >
 			<svg height="25" width="30">
@@ -172,12 +172,12 @@
               id="handsAngularVelocity-slider"
               type="text"
               data-provide="slider"
-              data-slider-ticks="[0, 5, 10]"
-              data-slider-ticks-labels='["falling", "leaning", "no dip allowed"]'
+              data-slider-ticks="[0, 1, 2]"
+              data-slider-ticks-labels='["high tolerance", "less", "none"]'
               data-slider-min="0"
-              data-slider-max="10"
-              data-slider-step=".1"
-              data-slider-value="7"
+              data-slider-max="2"
+              data-slider-step=".02"
+              data-slider-value="1.4"
               data-slider-tooltip="show"
             >
 			<svg height="25" width="30">
@@ -190,7 +190,7 @@
                 <circle id="failsafeSignal" cx="133" cy="22" r="20" stroke="black" stroke-width="1" fill="orange" />
             </svg>
 		 </div>
-		 <audio id="audio" src="file://c:/dev/hifi_fork/hifi/unpublishedScripts/marketplace/shapes/assets/audio/create.wav" autostart="false" ></audio>
+		 <audio id="audio" src="http://hifi-content.s3.amazonaws.com/angus/stepApp/create.wav" autostart="false" ></audio>
       </div>
     </div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
@@ -229,7 +229,9 @@
 				changeColor(message.id,message.data.value);
 				if (message.data.value === "green") {
 				   var sound = document.getElementById("audio");
-                   sound.play();
+                   sound.volume = 0.25;
+				   sound.play();
+				   
 				}
 			}
             if (message.type === "trigger") {

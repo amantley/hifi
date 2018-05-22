@@ -44,6 +44,7 @@ var RESET_MODE = false;
 var MY_HEIGHT = 1.15;
 
 var failsafeFlag = false;
+var failsafeSignalTimer = -1.0;
 var maxHeightChange = 0.010;
 var angularVelocityThreshold = 0.3;         
 var handVelocityThreshold = -1.0;
@@ -100,7 +101,7 @@ var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
 
-var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepApp.html");
+var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -150,32 +151,44 @@ function onWebEventReceived(msg) {
     switch (message.type) {
         case "onAnteriorBaseSlider":
             print("anterior slider " + message.data.value);
-            setAnteriorDistance(message.data.value / 100.0);
+            var frontBaseMeters = message.data.value / 100.0;
+            setAnteriorDistance(frontBaseMeters);
             break;
         case "onPosteriorBaseSlider":
             print("posterior slider " + message.data.value);
-            setPosteriorDistance(message.data.value / 100.0);
+            var backBaseMeters = message.data.value / 100.0;
+            setPosteriorDistance(backBaseMeters);
             break;
         case "onLateralBaseSlider":
             print("lateral slider " + message.data.value);
-            setLateralDistance(message.data.value / 100.0);
+            var lateralBaseMeters = message.data.value / 100.0;
+            setLateralDistance(lateralBaseMeters);
             break;
         case "onAngularVelocitySlider":
             print("angular velocity value " + message.data.value);
-            setAngularThreshold(Math.pow(4, (10.0 - message.data.value) / 5.0) - 1.0);
+            // the scale of this slider is logarithmic to cover a greater range of values
+            // the range of values is 4 raised to the power of the slider input value, which is scaled to 0-2.
+            // this makes the real range 15 to 0 for angular velocity of the head
+            var angularVelocityHeadExponential = Math.pow(4, (2.0 - message.data.value)) - 1.0;
+            setAngularThreshold(angularVelocityHeadExponential);
             break;
         case "onHeightDifferenceSlider":
             print("height slider " + message.data.value);
-            setHeightThreshold(-(message.data.value / 100.0));
+            var heightDifferenceToleranceMeters = -(message.data.value / 100.0);
+            setHeightThreshold(heightDifferenceToleranceMeters);
             break;
         case "onHandsVelocitySlider":
             print("hands velocity slider " + message.data.value);
-            setHandVelocityThreshold(message.data.value / 10.0);
+            var handDirectionToHeadDirectionInverseCosine = message.data.value;
+            setHandVelocityThreshold(handDirectionToHeadDirectionInverseCosine);
             break;
         case "onHandsAngularVelocitySlider":
             print("hands angular velocity slider " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
-            setHandAngularVelocityThreshold(Math.pow(7, (10.0 - message.data.value) / 2.0) - 1.0);
+            // the range of values is 7 raised to the power of the slider input value, which is scaled to 0-2.
+            // this makes the real range 48 to 0 for angular velocity tolerance in the hands
+            var angularVelocityHandExponential = Math.pow(7, (2.0 - message.data.value)) - 1.0;
+            setHandAngularVelocityThreshold(angularVelocityHandExponential);
             break;
         case "onCreateStepApp":
             print("on create step app ");
@@ -186,6 +199,85 @@ function onWebEventReceived(msg) {
     }
 }
 
+function initAppForm() {
+    print("step app is loaded: " + documentLoaded);
+    var frontEdgeCentimeters = 100.0 * frontEdge;
+    tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": frontEdgeCentimeters } }));
+    var backEdgeCentimeters = 100.0 * backEdge;
+    tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": backEdgeCentimeters } }));
+    var lateralEdgeCentimeters = 100.0 * lateralEdge;
+    tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": lateralEdgeCentimeters } }));
+    var angularVelocityHeadLogarithmic = (-1.0 * getLog(4, (angularVelocityThreshold + 1)) + 2.0);
+    tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": angularVelocityHeadLogarithmic } }));
+    var heightDifferenceToleranceCentimeters = -100.0 * maxHeightChange;
+    tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": heightDifferenceToleranceCentimeters } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": handVelocityThreshold } }));
+    var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (angularVelocityThreshold + 1)) + 2.0);
+    tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id":"frontSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id": "handAngularSignal", "data": { "value": "green" } }));
+}
+
+function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel) {
+    // if we are outside the support base in one direction we get a green light to translate
+    // in that case make the non crossed edges signals blue to reflect that they are no longer blocking translation
+    if (!isSupported) {
+        if (overFront) {
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
+        } else if (overBack) {
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
+        } else {
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
+        }
+        if (overLateral) {
+            // over lateral
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
+        } else {
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "blue" } }));
+        }
+    } else {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "red" } }));
+    }
+    // console.log("angular velocity threshold " + angularVelocityThreshold);
+    // if we have too much head angular velocity, thus triggering this break on translation.
+    if (!(xzAngVel < angularVelocityThreshold)) {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "red" } }));
+    } else {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
+    }
+    // if we are lower than the height tolerance relative to the height mode
+    if (!(heightDiff < maxHeightChange)) {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "red" } }));
+    } else {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
+    }
+    // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
+    if (!(((!lhPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))
+      && ((!rhPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))) {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "red" } }));
+    } else {
+        // otherwise we are not blocked from translating
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
+    }
+
+    // if the hand angular velocity for both hands is not lower than the threshold
+    if (!((xzRHAngVel < handAngularVelocityThreshold) && (xzLHAngVel < handAngularVelocityThreshold))) {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "red" } }));
+    } else {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
+    }
+}
+
 function onScreenChanged(type, url) {     
     print("Screen changed");
     if (type === "Web" && url === HTML_URL) {
@@ -193,23 +285,7 @@ function onScreenChanged(type, url) {
             // hook up to event bridge
             tablet.webEventReceived.connect(onWebEventReceived);
             print("after connect web event");
-            Script.setTimeout(function() {
-                print("step app is loaded: " + documentLoaded);
-                tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": 100.0*frontEdge } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": 100.0*backEdge } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": 100.0*lateralEdge } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": (-5.0 * getLog(4, (angularVelocityThreshold + 1)) + 10.0) } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": -100.0*maxHeightChange } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": 10.0*handVelocityThreshold } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": (-2.0*getLog(7,(handAngularVelocityThreshold+1))+10.0) } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id":"frontSignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
-                tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id": "handAngularSignal", "data": { "value": "green" } }));
-            }, 500);
+            Script.setTimeout(initAppForm, 500);
         }
         activated = true;
     } else {
@@ -330,7 +406,6 @@ function findMode(ary, currentMode, backLength, defaultBack, currentHeight) {
         return Number(mode);    
     } else {
         if (failsafeFlag || (!RESET_MODE && HMD.active)) {
-            print("resetting the mode....................default " + defaultBack + " head-origin " + backLength);
             print("resetting the mode............................................. ");
             print("resetting the mode............................................. ");
             RESET_MODE = true;
@@ -388,7 +463,7 @@ function update(dt) {
     var xzLHandAngularVelocity = Vec3.length({ x: leftHandPose.angularVelocity.x, y: 0.0, z: leftHandPose.angularVelocity.z });
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
-    //console.log("console right hand angular velocity " + xzRHandAngularVelocity);
+    // console.log("console right hand angular velocity " + xzRHandAngularVelocity);
 
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
@@ -414,71 +489,25 @@ function update(dt) {
         hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
     }
 
-    // if we are outside the support base in one direction we get a green light to translate
-    if (!inSupport) {
-        if (overFront) {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "green" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
-        } else if (overBack) {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
-        } else {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
-        }
-        if (overLateral) {
-            // over lateral
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
-        } else {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "blue" } }));
-        }
-    } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "red" } }));
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "red" } }));
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "red" } }));
-    }
+    // make the signal colors reflect the current thresholds that have been crossed
+    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity);
 
-    // console.log("angular velocity threshold " + angularVelocityThreshold);
-    // if we have too much head angular velocity, thus triggering this break on translation.
-    if (!(xzAngularVelocity < angularVelocityThreshold)) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "red" } }));
-    } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
-    }
-
-    // if we are lower than the height tolerance relative to the height mode
-    if (!(heightDifferenceFromAverage < maxHeightChange)) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "red" } }));
-    } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
-    }
-
-    // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
-    if (!(((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON))
-      && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON)))) { 
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "red" } }));
-    } else {
-        // otherwise we are not blocked from translating
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
-    }
-
-    // if the hand angular velocity for both hands is not lower than the threshold
-    if (!((xzRHandAngularVelocity < handAngularVelocityThreshold) && (xzLHandAngularVelocity < handAngularVelocityThreshold))) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "red" } }));
-    } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
-    }
-
-
-    //  are we off the base of support, losing height and tilting the head 
-    // 1. off the base of support. 2) head is not rotating too much 3) head hasn't lost too much height  4) hands are not still.
-    // then we can translate
-    // to do: add in -->  -getStationaryFudgeFactor()
-    // && (xzAngularVelocity < angularVelocityThreshold)
-    if ( !inSupport && (heightDifferenceFromAverage < maxHeightChange)) {
-        // && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)) 
-        // && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))
-        // && (xzRHandAngularVelocity < handAngularVelocityThreshold) && (xzLHandAngularVelocity < handAngularVelocityThreshold)) {
+    //  Conditions for taking a step. 
+    // 1. off the base of support. front, lateral, back edges.
+    // 2. head is not lower than the height mode value by more than the maxHeightChange tolerance
+    // 3. the angular velocity of the head is not greater than the threshold value
+    //    ie this reflects the speed the head is rotating away from having up = (0,1,0) in Avatar frame..
+    // 4. the hands velocity vector has the same direction as the head, within the given tolerance
+    //    the tolerance is an acos value, -1 means the hands going in any direction will not block translating
+    //    up to 1 where the hands velocity direction must exactly match that of the head.
+    // 5. the angular velocity xz magnitude for each hand is below the threshold value
+    //    ie here this reflects the speed that each hand is rotating away from having up = (0,1,0) in Avatar frame.
+    // to do:  -getStationaryFudgeFactor()
+    if ( !inSupport && (heightDifferenceFromAverage < maxHeightChange) && (xzAngularVelocity < angularVelocityThreshold)
+         && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)) 
+         && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))
+         && (!rightHandPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
+         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold))) {
 
         if (STEPTURN && (stepTimer < 0.0)) {
             print("trigger recenter========================================================");
