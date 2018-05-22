@@ -223,7 +223,7 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id": "handAngularSignal", "data": { "value": "green" } }));
 }
 
-function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel) {
+function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel, headPoseValid) {
     // if we are outside the support base in one direction we get a green light to translate
     // in that case make the non crossed edges signals blue to reflect that they are no longer blocking translation
     if (!isSupported) {
@@ -250,7 +250,7 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     }
     // console.log("angular velocity threshold " + angularVelocityThreshold);
     // if we have too much head angular velocity, thus triggering this break on translation.
-    if (!(xzAngVel < angularVelocityThreshold)) {
+    if (headPoseValid && !(xzAngVel < angularVelocityThreshold)) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "red" } }));
     } else {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
@@ -262,8 +262,8 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
     }
     // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
-    if (!(((!lhPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))
-      && ((!rhPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))) {
+    if (!((!lhPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON)))
+      && (!rhPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON))))) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "red" } }));
     } else {
         // otherwise we are not blocked from translating
@@ -271,7 +271,7 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     }
 
     // if the hand angular velocity for both hands is not lower than the threshold
-    if (!((xzRHAngVel < handAngularVelocityThreshold) && (xzLHAngVel < handAngularVelocityThreshold))) {
+    if (!((!rhPose.valid || (xzRHAngVel < handAngularVelocityThreshold)) && (!lhPose.valid || (xzLHAngVel < handAngularVelocityThreshold)))) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "red" } }));
     } else {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
@@ -490,7 +490,7 @@ function update(dt) {
     }
 
     // make the signal colors reflect the current thresholds that have been crossed
-    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity);
+    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid);
 
     //  Conditions for taking a step. 
     // 1. off the base of support. front, lateral, back edges.
@@ -504,10 +504,10 @@ function update(dt) {
     //    ie here this reflects the speed that each hand is rotating away from having up = (0,1,0) in Avatar frame.
     // to do:  -getStationaryFudgeFactor()
     if ( !inSupport && (heightDifferenceFromAverage < maxHeightChange) && (xzAngularVelocity < angularVelocityThreshold)
-         && ((!leftHandPose.valid || (handDotHead[LEFT] > handVelocityThreshold)) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)) 
-         && ((!rightHandPose.valid || (handDotHead[RIGHT] > handVelocityThreshold)) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))
-         && (!rightHandPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
-         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold))) {
+         && ((!leftHandPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON))) 
+         && (!rightHandPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))))
+         && ((!rightHandPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
+         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))) {
 
         if (STEPTURN && (stepTimer < 0.0)) {
             print("trigger recenter========================================================");
