@@ -213,7 +213,7 @@ function initAppForm() {
     var heightDifferenceToleranceCentimeters = -100.0 * maxHeightChange;
     tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": heightDifferenceToleranceCentimeters } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": handVelocityThreshold } }));
-    var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (angularVelocityThreshold + 1)) + 2.0);
+    var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (handAngularVelocityThreshold + 1)) + 2.0);
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id":"frontSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
