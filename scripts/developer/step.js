@@ -113,9 +113,10 @@ function manageClick() {
 }
 
 var tabletButton = tablet.addButton({
+    //color: "red",
     text: TABLET_BUTTON_NAME,
-    icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg"),
-    activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/step2.svg")
+    icon: Script.resolvePath("http://game-icons.net/icons/quoting/originals/svg/lost-limb.svg"),
+    activeIcon: Script.resolvePath("http://game-icons.net/icons/quoting/originals/svg/lost-limb.svg")
 });
 
 function drawBase() {
