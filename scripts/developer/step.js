@@ -18,7 +18,7 @@ var DEFAULT_HEIGHT_DIFFERENCE = -0.01;
 var DEFAULT_ANGULAR_VELOCITY = 0.3;
 var DEFAULT_HAND_VELOCITY = -1.0;
 var DEFAULT_ANGULAR_HAND_VELOCITY = 0.3;
-var VELOCITY_EPSILON = 0.00001;
+var VELOCITY_EPSILON = 0.02;
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
 var MAX_LEVEL_PITCH = 3;                        
 var MAX_LEVEL_ROLL = 3;
@@ -102,6 +102,7 @@ var activated = false;
 var documentLoaded = false;
 
 var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+// var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepApp.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -115,8 +116,8 @@ function manageClick() {
 var tabletButton = tablet.addButton({
     //color: "red",
     text: TABLET_BUTTON_NAME,
-    icon: Script.resolvePath("http://game-icons.net/icons/quoting/originals/svg/lost-limb.svg"),
-    activeIcon: Script.resolvePath("http://game-icons.net/icons/quoting/originals/svg/lost-limb.svg")
+    icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/foot.svg"),
+    activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/foot.svg")
 });
 
 function drawBase() {
@@ -473,6 +474,10 @@ function update(dt) {
     for (var hand = LEFT; hand <= RIGHT; hand++) {
         //  Update hand object 
         var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
+        if (hand === 1) {
+            print("right hand velocity" + pose.velocity.x + " " + pose.velocity.y + " " + pose.velocity.z);
+            print("magnitude " + Vec3.length({x: pose.velocity.x,y: 0.0,z: pose.velocity.z}));
+        } 
         var lateralPoseVelocity = {x:0, y:0, z:0};
         if (pose.valid && headPose.valid) {
             lateralPoseVelocity = pose.velocity;
@@ -489,7 +494,7 @@ function update(dt) {
         var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
         hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
     }
-
+    // print("hand dot head " + handDotHead[LEFT] + " " + handDotHead[RIGHT]);
     // make the signal colors reflect the current thresholds that have been crossed
     updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid);
 
@@ -516,11 +521,12 @@ function update(dt) {
             stepTimer = 0.6;
             stationaryTimer = 0.0;
         }
-    } else if (torsoLength > (defaultLength + 0.07)) {
+    } else if ((torsoLength > (defaultLength + 0.07)) && (failsafeSignalTimer < 0.0)) {
         // do the failsafe recenter.
         // failsafeFlag resets the mode.
+        print("in the failsafe");
         failsafeFlag = true;
-        failsafeSignalTimer = 1.0;
+        failsafeSignalTimer = 2.5;
         stepTimer = 0.6;
         MyAvatar.triggerHorizontalRecenter();
         tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "green" } }));

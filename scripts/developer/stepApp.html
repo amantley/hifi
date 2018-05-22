@@ -226,12 +226,16 @@
 		EventBridge.scriptEventReceived.connect(function (msg) {
             var message = JSON.parse(msg);
 			if (message.type === "failsafe") {
+			    console.log("fail safe called");
 				changeColor(message.id,message.data.value);
 				if (message.data.value === "green") {
 				   var sound = document.getElementById("audio");
-                   sound.volume = 0.25;
-				   sound.play();
-				   
+				   if (sound.paused) {
+				       sound.volume = 0.25;
+                       sound.play();
+                   } else {
+                       sound.currentTime = 0;
+                   }		   
 				}
 			}
             if (message.type === "trigger") {
