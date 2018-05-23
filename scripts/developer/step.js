@@ -77,6 +77,7 @@ var headPosition;
 var headAverageOrientation = MyAvatar.orientation;
 var headPoseAverageOrientation = { x: 0, y: 0, z: 0, w: 1 };
 var averageHeight = 1.0;
+var headVelocityThreshold = 0.0;
 var handPosition;
 var handOrientation;
 var headOrientation;
@@ -101,8 +102,8 @@ var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
 
-var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
-// var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepApp.html");
+// var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
+var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepApp.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -114,7 +115,6 @@ function manageClick() {
 }
 
 var tabletButton = tablet.addButton({
-    //color: "red",
     text: TABLET_BUTTON_NAME,
     icon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/foot.svg"),
     activeIcon: Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/foot.svg")
@@ -192,6 +192,14 @@ function onWebEventReceived(msg) {
             var angularVelocityHandExponential = Math.pow(7, (2.0 - message.data.value)) - 1.0;
             setHandAngularVelocityThreshold(angularVelocityHandExponential);
             break;
+        case "onHeadVelocitySlider":
+            print("head velocity slider " + message.data.value);
+            // the scale of this slider is logarithmic to cover a greater range of values
+            // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
+            // this makes the real range 31 to 0 for the velocity tolerance of the head
+            var headVelocityThreshold = Math.pow(2, message.data.value) - 1.0;
+            setHeadVelocityThreshold(headVelocityThreshold);
+            break;
         case "onCreateStepApp":
             print("on create step app ");
             break;
@@ -216,16 +224,19 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": handVelocityThreshold } }));
     var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (handAngularVelocityThreshold + 1)) + 2.0);
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id":"frontSignal", "data": { "value": "green" } }));
+    var headVelocityLogarithmic = getLog(2, (headVelocityThreshold + 1));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "headVelocity", "data": { "value": headVelocityLogarithmic } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger","id": "handAngularSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "green" } }));
 }
 
-function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel, headPoseValid) {
+function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel, headPoseValid, headSpeed) {
     // if we are outside the support base in one direction we get a green light to translate
     // in that case make the non crossed edges signals blue to reflect that they are no longer blocking translation
     if (!isSupported) {
@@ -278,6 +289,14 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     } else {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
     }
+
+    if (headSpeed < headVelocityThreshold) {
+        // if head speed is below threshold then don't translate
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "red" } }));
+    } else {
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "green" } }));
+    }
+
 }
 
 function onScreenChanged(type, url) {     
@@ -348,6 +367,11 @@ function setHandAngularVelocityThreshold(num) {
 function setHandVelocityThreshold(num) {
     handVelocityThreshold = num;
     print("hand velocity threshold " + handVelocityThreshold);
+}
+
+function setHeadVelocityThreshold(num) {
+    headVelocityThreshold = num;
+    print("headvelocity threshold " + headVelocityThreshold);
 }
 
 function withinBaseOfSupport(pos) {
@@ -465,8 +489,6 @@ function update(dt) {
     var xzLHandAngularVelocity = Vec3.length({ x: leftHandPose.angularVelocity.x, y: 0.0, z: leftHandPose.angularVelocity.z });
     var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
-    // console.log("console right hand angular velocity " + xzRHandAngularVelocity);
-
     var heightDifferenceFromAverage = modeHeight - headPose.translation.y;
 
     // Get the hands velocity relative to the head
@@ -475,10 +497,10 @@ function update(dt) {
         //  Update hand object 
         var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
         if (hand === 1) {
-            print("right hand velocity" + pose.velocity.x + " " + pose.velocity.y + " " + pose.velocity.z);
-            print("magnitude " + Vec3.length({x: pose.velocity.x,y: 0.0,z: pose.velocity.z}));
+            // print("right hand velocity" + pose.velocity.x + " " + pose.velocity.y + " " + pose.velocity.z);
+            // print("magnitude " + Vec3.length({x: pose.velocity.x,y: 0.0,z: pose.velocity.z}));
         } 
-        var lateralPoseVelocity = {x:0, y:0, z:0};
+        var lateralPoseVelocity = {x: 0, y: 0, z: 0};
         if (pose.valid && headPose.valid) {
             lateralPoseVelocity = pose.velocity;
             lateralPoseVelocity.y = 0;
@@ -496,7 +518,7 @@ function update(dt) {
     }
     // print("hand dot head " + handDotHead[LEFT] + " " + handDotHead[RIGHT]);
     // make the signal colors reflect the current thresholds that have been crossed
-    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid);
+    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid, Vec3.length(headPose.velocity));
 
     //  Conditions for taking a step. 
     // 1. off the base of support. front, lateral, back edges.
@@ -513,7 +535,8 @@ function update(dt) {
          && ((!leftHandPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON))) 
          && (!rightHandPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))))
          && ((!rightHandPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
-         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))) {
+         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))
+         && (Vec3.length(headPose.velocity) > headVelocityThreshold)) {
 
         if (STEPTURN && (stepTimer < 0.0)) {
             print("trigger recenter========================================================");
@@ -524,12 +547,39 @@ function update(dt) {
     } else if ((torsoLength > (defaultLength + 0.07)) && (failsafeSignalTimer < 0.0)) {
         // do the failsafe recenter.
         // failsafeFlag resets the mode.
-        print("in the failsafe");
+        
         failsafeFlag = true;
         failsafeSignalTimer = 2.5;
         stepTimer = 0.6;
         MyAvatar.triggerHorizontalRecenter();
         tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "green" } }));
+        // in fail safe we debug print the values that were blocking us.
+        print("failsafe debug---------------------------------------------------------------");
+        if (!inSupport) {
+            print("1. inSupport: false");
+        }
+        if (!(xzAngularVelocity < angularVelocityThreshold)) {
+            print("2. angular velocity exceeded threshold");
+        }
+        // if we are lower than the height tolerance relative to the height mode
+        if (!(heightDifferenceFromAverage < maxHeightChange)) {
+            print("3. height was too far below the mode");
+        }
+        // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
+        if (!((!leftHandPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)))
+          && (!rightHandPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))))) {
+            print("4. hands were not following the head direction");
+        } 
+        // if the hand angular velocity for both hands is not lower than the threshold
+        if (!((!rightHandPose.valid || (xzRHandAngularVelocity < handAngularVelocityThreshold)) && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))) {
+            print("5. hands angular velocity exceeded threshold");
+        }
+        if (Vec3.length(headPose.velocity) < headVelocityThreshold) {
+            // if head speed is below threshold then don't translate
+            print("6. head speed was too low");
+        }
+        print("end failsafe debug---------------------------------------------------------------");
+
     }
     
     if (failsafeSignalTimer < 0.0) {
