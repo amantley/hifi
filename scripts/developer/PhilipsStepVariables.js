@@ -454,9 +454,46 @@ function withinBaseOfSupport(pos) {
     overFront = !(isInsideLine(Vec3.multiply(userScale, frontLeft), Vec3.multiply(userScale, frontRight), pos));
     overBack = !(isInsideLine(Vec3.multiply(userScale, backRight), Vec3.multiply(userScale, backLeft), pos));
     overLateral = !(isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos) && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
-    return (!overFront && !overBack && !overLateral);
+    return useBaseSupport && (!overFront && !overBack && !overLateral);
 }
 
+function withinThresholdOfStandingHeightMode(heightDiff) {
+    return (heightDiff < maxHeightChange) && useMode;
+}
+
+function headAngularVelocityBelowThreshold(angVel) {
+    return angVel < angularVelocityThreshold;
+}
+
+function handDirectionMatchesHeadDirection(lhPose, rhPose) {
+    return ((handVelocityThreshold < -0.98) ||
+        ((!lhPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))) &&
+        (!rhPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))));
+}
+
+function handAngularVelocityBelowThreshold(lhPose, rhPose) {
+    var xzRHandAngularVelocity = Vec3.length({ x: rhPose.angularVelocity.x, y: 0.0, z: rhPose.angularVelocity.z });
+    var xzLHandAngularVelocity = Vec3.length({ x: lhPose.angularVelocity.x, y: 0.0, z: lhPose.angularVelocity.z });
+    return ((!rhPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
+         && (!lhPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)));
+
+}
+
+function headVelocityGreaterThanThreshold(headVel) {
+    return headVel > headVelocityThreshold;
+}
+
+function headMovedAwayFromAveragePosition(headDelta) {
+    return !withinBaseOfSupport(headDelta) || !useRunningHeadPosition;
+}
+
+function headLowerThanHeightAverage(heightDiff) {
+    return (heightDiff < maxHeightChange) || !useRunningHeight;
+}
+
+function isHeadLevel(eulers, averageEulers) {
+    return (Math.abs(eulers.z - averageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(eulers.x - averageEulers.x) < MAX_LEVEL_PITCH);
+}
 function getStationaryFudgeFactor() {
     // if no translation for 30 seconds then we raise the bar for translating by 1cm
     var percentStationary = stationaryTimer / 30.0;
@@ -600,8 +637,7 @@ function update(dt) {
     var lateralDistanceFromAverage = Vec3.length({ x: deltaHead.x, y: 0, z: deltaHead.z });
     var heightDifferenceFromAveragePhilip = Math.abs(headPosition.y - averageHeight);
     var isLessThanMinStepDistanceFromAverage = withinBaseOfSupport(deltaHead);
-    var isHeadLevel = (Math.abs(headEulers.z - headAverageEulers.z) < MAX_LEVEL_ROLL)
-        && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
+    
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
 
@@ -622,15 +658,15 @@ function update(dt) {
     // 7. head has moved further than the threshold from the running average position of the head.
     // 8. head height is not lower than the running average head height with a difference of maxHeightChange.
     // 9. head's rotation in avatar space is not pitching or rolling greater than the pitch or roll thresholds
-    if ( (!inSupport || !useBaseSupport) && ((heightDifferenceFromAverage < maxHeightChange) || !useMode) && (xzAngularVelocity < angularVelocityThreshold)
-         && ((handVelocityThreshold < -0.98) || ((!leftHandPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)))
-         && (!rightHandPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON)))))
-         && ((!rightHandPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
-         && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))
-         && (Vec3.length(headPose.velocity) > headVelocityThreshold)
-         && (!isLessThanMinStepDistanceFromAverage || !useRunningHeadPosition) 
-         && ((heightDifferenceFromAveragePhilip < maxHeightChange) || !useRunningHeight)
-         && isHeadLevel) {
+    if (!withinBaseOfSupport(headPosAvatarSpace) &&
+        withinThresholdOfStandingHeightMode(heightDifferenceFromAverage) &&
+        headAngularVelocityBelowThreshold(xzAngularVelocity) &&
+        handDirectionMatchesHeadDirection(leftHandPose, rightHandPose) &&
+        handAngularVelocityBelowThreshold(leftHandPose, rightHandPose) &&  
+        headVelocityGreaterThanThreshold(Vec3.length(headPose.velocity)) &&
+        headMovedAwayFromAveragePosition(deltaHead) && 
+        headLowerThanHeightAverage(heightDifferenceFromAveragePhilip) &&
+        isHeadLevel(headEulers, headAverageEulers)) {
 
         if (stepTimer < 0.0) {
             print("trigger recenter========================================================");
