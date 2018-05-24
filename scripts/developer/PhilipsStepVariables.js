@@ -210,7 +210,7 @@ function onWebEventReceived(msg) {
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
             // this makes the real range 31 to 0 for the velocity tolerance of the head
-            var headPitchThreshold = Math.pow(2, (5.0 - message.data.value)) - 1.0;
+            var headPitchThreshold = Math.pow(2.5, (5.0 - message.data.value)) - 1.0;
             setHeadPitchThreshold(headPitchThreshold);
             break;
         case "onHeadRollSlider":
@@ -218,7 +218,7 @@ function onWebEventReceived(msg) {
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
             // this makes the real range 31 to 0 for the velocity tolerance of the head
-            var headRollThreshold = Math.pow(2, (5.0 - message.data.value)) - 1.0;
+            var headRollThreshold = Math.pow(2.5, (5.0 - message.data.value)) - 1.0;
             setHeadRollThreshold(headRollThreshold);
             break;
         case "onModeCheckBox":
@@ -263,9 +263,9 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
     var headVelocityLogarithmic = getLog(2, (headVelocityThreshold + 1));
     tablet.emitScriptEvent(JSON.stringify({ "type": "headVelocity", "data": { "value": headVelocityLogarithmic } }));
-    var headPitchLogarithmic = getLog(2, (MAX_LEVEL_PITCH + 1));
+    var headPitchLogarithmic = getLog(2.5, (MAX_LEVEL_PITCH + 1));
     tablet.emitScriptEvent(JSON.stringify({ "type": "headPitch", "data": { "value": headPitchLogarithmic } }));
-    var headRollLogarithmic = getLog(2, (MAX_LEVEL_ROLL + 1));
+    var headRollLogarithmic = getLog(2.5, (MAX_LEVEL_ROLL + 1));
     tablet.emitScriptEvent(JSON.stringify({ "type": "headRoll", "data": { "value": headRollLogarithmic } }));
     //init checkboxes
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "modeCheck" ,"data": { "value": useMode } }));
@@ -347,6 +347,7 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     }
 
     if (headPitch > MAX_LEVEL_PITCH) {
+        print("headpitch " + headPitch);
         // if head pitch is above threshold then don't translate
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headPitchSignal", "data": { "value": "red" } }));
     } else {
@@ -355,6 +356,7 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
 
     if (headRoll > MAX_LEVEL_ROLL) {
         // if head roll is above threshold then don't translate
+        print("headRoll" + headRoll);
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headRollSignal", "data": { "value": "red" } }));
     } else {
         tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headRollSignal", "data": { "value": "green" } }));
@@ -535,10 +537,10 @@ function update(dt) {
     var headPoseRigSpace = Quat.multiply(CHANGE_OF_BASIS_ROTATION, headPose.rotation);
     headPosition = Camera.getPosition();
     headOrientation = Camera.getOrientation();
-    headEulers = Quat.safeEulerAngles(headOrientation);
+    headEulers = Quat.safeEulerAngles(headPose.rotation);
     headAveragePosition = Vec3.mix(headAveragePosition, headPosition, AVERAGING_RATE);
     averageHeight = headPosition.y * HEIGHT_AVERAGING_RATE + averageHeight * (1.0 - HEIGHT_AVERAGING_RATE);
-    headAverageOrientation = Quat.slerp(headAverageOrientation, headOrientation, AVERAGING_RATE);
+    headAverageOrientation = Quat.slerp(headAverageOrientation, headPose.rotation, AVERAGING_RATE);
     headAverageEulers = Quat.safeEulerAngles(headAverageOrientation);
     headPoseAverageOrientation = Quat.slerp(headPoseAverageOrientation, headPoseRigSpace, AVERAGING_RATE);
     var headPoseAverageEulers = Quat.safeEulerAngles(headPoseAverageOrientation);
@@ -590,7 +592,7 @@ function update(dt) {
     }
     // print("hand dot head " + handDotHead[LEFT] + " " + handDotHead[RIGHT]);
     // make the signal colors reflect the current thresholds that have been crossed
-    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid, Vec3.length(headPose.velocity));
+    updateSignalColors(inSupport, xzAngularVelocity, heightDifferenceFromAverage, leftHandPose, rightHandPose, xzRHandAngularVelocity, xzLHandAngularVelocity, headPose.valid, Vec3.length(headPose.velocity), Math.abs(headEulers.x - headAverageEulers.x), Math.abs(headEulers.z - headAverageEulers.z));
 
     /////////////////////////////////////////////////////
     ///////////////////////Philips Variables/////////////////////
@@ -602,6 +604,9 @@ function update(dt) {
         && (Math.abs(headEulers.x - headAverageEulers.x) < MAX_LEVEL_PITCH);
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
+
+    //print("head eulers head pose rotation" + headEulers.x + " " + headEulers.y + " " + headEulers.z);
+    //print("head eulers controller" + tempEuler.x + " " + tempEuler.y + " " + tempEuler.z);
 
     //  Conditions for taking a step. 
     // 1. off the base of support. front, lateral, back edges.
@@ -625,7 +630,7 @@ function update(dt) {
          && (Vec3.length(headPose.velocity) > headVelocityThreshold)
          && (!isLessThanMinStepDistanceFromAverage || !useRunningHeadPosition) 
          && ((heightDifferenceFromAveragePhilip < maxHeightChange) || !useRunningHeight)
-         && (isHeadLevel || true)) {
+         && isHeadLevel) {
 
         if (stepTimer < 0.0) {
             print("trigger recenter========================================================");
@@ -669,7 +674,7 @@ function update(dt) {
             print("6. head speed was too low");
         }
         // head lateral movement
-        if (!(!isLessThanMinStepDistanceFromAverage || !useRunningHeadPosition)){
+        if (!(!isLessThanMinStepDistanceFromAverage || !useRunningHeadPosition)) {
             print("7. head lateral movement from average head position not sufficient");
         }
         // head lateral movement
