@@ -7,6 +7,8 @@ Script.registerValue("STEPAPP", true);
 var CENTIMETERSPERMETER = 100.0;
 var LEFT = 0;
 var RIGHT = 1;
+var INCREASING = 1.0;
+var DECREASING = -1.0;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
 var TABLET_BUTTON_NAME = "STEP";
 var CHANGE_OF_BASIS_ROTATION = { x: 0, y: 1, z: 0, w: 0 };
@@ -124,6 +126,8 @@ function appProperty(name, type, eventType, signalType, setFunction, initValue, 
 var frontBaseProperty = new appProperty("frontBase", "slider", "onAnteriorBaseSlider", "frontSignal", setAnteriorDistance, -frontEdge,convertToMeters,convertToCentimeters);
 var backBaseProperty = new appProperty("backBase", "slider", "onPosteriorBaseSlider", "backSignal", setPosteriorDistance, backEdge, convertToMeters, convertToCentimeters);
 var lateralBaseProperty = new appProperty("lateralBase", "slider", "onLateralBaseSlider", "lateralSignal", setLateralDistance, lateralEdge, convertToMeters, convertToCentimeters);
+var headAngularVelocityProperty = new appProperty("angularVelocity", "slider", "onAngularVelocitySlider", "angularyVelocitySignal", setAngularThreshold, angularVelocityThreshold, convertExponential, convertLog);
+var heightDifferenceProperty = new appProperty("heightDifference", "slider", "onHeightDifferenceSlider", "heightDifferenceSignal", setHeightThreshold, maxHeightChange, convertToMeters, convertToCentimeters);
 var propArray = new Array(frontBaseProperty, backBaseProperty);
 propArray.forEach(function (prop) {
     print(prop.name);
@@ -202,18 +206,20 @@ function onWebEventReceived(msg) {
             print("lateral slider " + message.data.value);
             lateralBaseProperty.setValue(lateralBaseProperty.convertToThreshold(message.data.value));
             break;
-        case "onAngularVelocitySlider":
+        case headAngularVelocityProperty.eventType:
             print("angular velocity value " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 4 raised to the power of the slider input value, which is scaled to 0-2.
             // this makes the real range 15 to 0 for angular velocity of the head
-            var angularVelocityHeadExponential = Math.pow(4, (2.0 - message.data.value)) - 1.0;
-            setAngularThreshold(angularVelocityHeadExponential);
+            //var angularVelocityHeadExponential = Math.pow(4, (2.0 - message.data.value)) - 1.0;
+            //setAngularThreshold(angularVelocityHeadExponential);
+            headAngularVelocityProperty.setValue(headAngularVelocityProperty.convertToThreshold(4, message.data.value, DECREASING, 2.0));
             break;
-        case "onHeightDifferenceSlider":
+        case heightDifferenceProperty.eventType:
             print("height slider " + message.data.value);
-            var heightDifferenceToleranceMeters = -(message.data.value / 100.0);
-            setHeightThreshold(heightDifferenceToleranceMeters);
+            // var heightDifferenceToleranceMeters = -(message.data.value / 100.0);
+            // setHeightThreshold(heightDifferenceToleranceMeters);
+            heightDifferenceProperty.setValue(heightDifferenceProperty.convertToThreshold(-message.data.value));
             break;
         case "onHandsVelocitySlider":
             print("hands velocity slider " + message.data.value);
@@ -282,10 +288,8 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": frontBaseProperty.name, "data": { "value": frontBaseProperty.convertToSlider(frontBaseProperty.value) } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": backBaseProperty.name, "data": { "value": backBaseProperty.convertToSlider(backBaseProperty.value) } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": lateralBaseProperty.name, "data": { "value": lateralBaseProperty.convertToSlider(lateralBaseProperty.value) } }));
-    var angularVelocityHeadLogarithmic = (-1.0 * getLog(4, (angularVelocityThreshold + 1)) + 2.0);
-    tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": angularVelocityHeadLogarithmic } }));
-    var heightDifferenceToleranceCentimeters = -100.0 * maxHeightChange;
-    tablet.emitScriptEvent(JSON.stringify({ "type": "heightDifference", "data": { "value": heightDifferenceToleranceCentimeters } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": headAngularVelocityProperty.name, "data": { "value": headAngularVelocityProperty.convertToSlider(headAngularVelocityProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": heightDifferenceProperty.name, "data": { "value": -heightDifferenceProperty.convertToSlider(heightDifferenceProperty.value) } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": handVelocityThreshold } }));
     var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (handAngularVelocityThreshold + 1)) + 2.0);
     tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
@@ -304,8 +308,8 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headAngularVelocityProperty.signalType, "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": heightDifferenceProperty.signalType, "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "green" } }));
@@ -341,15 +345,15 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     // console.log("angular velocity threshold " + angularVelocityThreshold);
     // if we have too much head angular velocity, thus triggering this break on translation.
     if (headPoseValid && !(xzAngVel < angularVelocityThreshold)) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headAngularVelocityProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headAngularVelocityProperty.signalType, "data": { "value": "green" } }));
     }
     // if we are lower than the height tolerance relative to the height mode
     if (!(heightDiff < maxHeightChange)) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": heightDifferenceProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": heightDifferenceProperty.signalType, "data": { "value": "green" } }));
     }
     // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
     if ((handVelocityThreshold > -0.98) && !((!lhPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON)))
@@ -416,8 +420,12 @@ function getLog(x, y) {
     return Math.log(y) / Math.log(x);
 }
 
-function convertLog(base, num, a, b) {
-    return a * getLog(base, num) + b;
+function convertLog(base, num, direction, shift) {
+    return direction * getLog(base, (num + 1.0)) + shift;
+}
+
+function convertExponential(base, num, direction, shift) {
+    return Math.pow(base, (direction*num + shift)) - 1.0;
 }
 
 function convertToCentimeters(num) {
@@ -433,8 +441,8 @@ function isInsideLine(a, b, c) {
 }
 
 function setAngularThreshold(num) {
-    angularVelocityThreshold = num;
-    print("angular threshold " + angularVelocityThreshold);
+    headAngularVelocityProperty.value = num;
+    print("angular threshold " + headAngularVelocityProperty.get());
 }
 
 function setHeadRollThreshold(num) {
@@ -448,17 +456,17 @@ function setHeadPitchThreshold(num) {
 }
 
 function setHeightThreshold(num) {
-    maxHeightChange = num;
-    print("height threshold " + maxHeightChange);
+    heightDifferenceProperty.value = num;
+    print("height threshold " + heightDifferenceProperty.get());
 }
 
 function setLateralDistance(num) {
-    lateralEdge = num;
-    frontLeft.x = -lateralEdge;
-    frontRight.x = lateralEdge;
-    backLeft.x = -lateralEdge;
-    backRight.x = lateralEdge;
-    print("lateral distance  " + lateralEdge);
+    lateralBaseProperty.value = num;
+    frontLeft.x = -lateralBaseProperty.get();
+    frontRight.x = lateralBaseProperty.get();
+    backLeft.x = -lateralBaseProperty.get();
+    backRight.x = lateralBaseProperty.get();
+    print("lateral distance  " + lateralBaseProperty.get());
 }
 
 function setAnteriorDistance(num) {
