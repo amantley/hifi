@@ -4,6 +4,7 @@
 
 Script.registerValue("STEPAPP", true);
 
+var CENTIMETERSPERMETER = 100.0;
 var LEFT = 0;
 var RIGHT = 1;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
@@ -20,8 +21,6 @@ var DEFAULT_HAND_VELOCITY = -1.0;
 var DEFAULT_ANGULAR_HAND_VELOCITY = 0.3;
 var VELOCITY_EPSILON = 0.02;
 var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
-var MAX_LEVEL_PITCH = 3;                        
-var MAX_LEVEL_ROLL = 3;
 //  this should be changed by the actual base of support of the person? or Avatar?
 //  You must have moved at least this far laterally to take a step
 var MIN_STEP_DISTANCE = 0.03;
@@ -110,6 +109,38 @@ var useBaseSupport = true;
 var useRunningHeadPosition = false;
 var initApp = true;
 
+function appProperty(name, type, eventType, signalType, setFunction, initValue, convertToThreshold, convertToSlider) {
+    this.name = name;
+    this.type = type;
+    this.eventType = eventType;
+    this.signalType = signalType;
+    this.setValue = setFunction;
+    this.value = initValue;
+    this.get = function () { return this.value; };
+    this.convertToThreshold = convertToThreshold;
+    this.convertToSlider = convertToSlider;
+}
+
+var frontBaseProperty = new appProperty("frontBase", "slider", "onAnteriorBaseSlider", "frontSignal", setAnteriorDistance, -frontEdge,convertToMeters,convertToCentimeters);
+var backBaseProperty = new appProperty("backBase", "slider", "onPosteriorBaseSlider", "backSignal", setPosteriorDistance, backEdge, convertToMeters, convertToCentimeters);
+var lateralBaseProperty = new appProperty("lateralBase", "slider", "onLateralBaseSlider", "lateralSignal", setLateralDistance, lateralEdge, convertToMeters, convertToCentimeters);
+var propArray = new Array(frontBaseProperty, backBaseProperty);
+propArray.forEach(function (prop) {
+    print(prop.name);
+});
+
+
+//    name: "frontBase",
+//    type: "slider",
+//    eventType: "onAnteriorBaseSlider",
+//    signalType: "frontSignal",
+//    setValue: setAnteriorDistance,
+//    value: frontEdge,
+//    get: function() {
+//        return this.value;
+//    }
+//};
+
 // var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
 var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepAppExtra.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
@@ -159,20 +190,17 @@ function onWebEventReceived(msg) {
     var message = JSON.parse(msg);
     print(" we have a message from html dialog " + message.type);
     switch (message.type) {
-        case "onAnteriorBaseSlider":
+        case frontBaseProperty.eventType:
             print("anterior slider " + message.data.value);
-            var frontBaseMeters = message.data.value / 100.0;
-            setAnteriorDistance(frontBaseMeters);
+            frontBaseProperty.setValue(frontBaseProperty.convertToThreshold(message.data.value));
             break;
-        case "onPosteriorBaseSlider":
+        case backBaseProperty.eventType:
             print("posterior slider " + message.data.value);
-            var backBaseMeters = message.data.value / 100.0;
-            setPosteriorDistance(backBaseMeters);
+            backBaseProperty.setValue(backBaseProperty.convertToThreshold(message.data.value));
             break;
-        case "onLateralBaseSlider":
+        case lateralBaseProperty.eventType:
             print("lateral slider " + message.data.value);
-            var lateralBaseMeters = message.data.value / 100.0;
-            setLateralDistance(lateralBaseMeters);
+            lateralBaseProperty.setValue(lateralBaseProperty.convertToThreshold(message.data.value));
             break;
         case "onAngularVelocitySlider":
             print("angular velocity value " + message.data.value);
@@ -251,12 +279,9 @@ function onWebEventReceived(msg) {
 
 function initAppForm() {
     print("step app is loaded: " + documentLoaded);
-    var frontEdgeCentimeters = 100.0 * -frontEdge;
-    tablet.emitScriptEvent(JSON.stringify({ "type": "frontBase", "data": { "value": frontEdgeCentimeters } }));
-    var backEdgeCentimeters = 100.0 * backEdge;
-    tablet.emitScriptEvent(JSON.stringify({ "type": "backBase", "data": { "value": backEdgeCentimeters } }));
-    var lateralEdgeCentimeters = 100.0 * lateralEdge;
-    tablet.emitScriptEvent(JSON.stringify({ "type": "lateralBase", "data": { "value": lateralEdgeCentimeters } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": frontBaseProperty.name, "data": { "value": frontBaseProperty.convertToSlider(frontBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": backBaseProperty.name, "data": { "value": backBaseProperty.convertToSlider(backBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": lateralBaseProperty.name, "data": { "value": lateralBaseProperty.convertToSlider(lateralBaseProperty.value) } }));
     var angularVelocityHeadLogarithmic = (-1.0 * getLog(4, (angularVelocityThreshold + 1)) + 2.0);
     tablet.emitScriptEvent(JSON.stringify({ "type": "angularHeadVelocity", "data": { "value": angularVelocityHeadLogarithmic } }));
     var heightDifferenceToleranceCentimeters = -100.0 * maxHeightChange;
@@ -276,9 +301,9 @@ function initAppForm() {
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "baseOfSupportCheck", "data": { "value": useBaseSupport } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "headAveragePositionCheck", "data": { "value": useRunningHeadPosition } }));
     // init signal colors
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "green" } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "angularHeadSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "heightSignal", "data": { "value": "green" } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
@@ -293,25 +318,25 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     // in that case make the non crossed edges signals blue to reflect that they are no longer blocking translation
     if (!isSupported) {
         if (overFront) {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "green" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "blue" } }));
         } else if (overBack) {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "green" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "blue" } }));
         } else {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "blue" } }));
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "blue" } }));
         }
         if (overLateral) {
             // over lateral
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "green" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "green" } }));
         } else {
-            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "blue" } }));
+            tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "blue" } }));
         }
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "frontSignal", "data": { "value": "red" } }));
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "backSignal", "data": { "value": "red" } }));
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "lateralSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "red" } }));
     }
     // console.log("angular velocity threshold " + angularVelocityThreshold);
     // if we have too much head angular velocity, thus triggering this break on translation.
@@ -391,6 +416,18 @@ function getLog(x, y) {
     return Math.log(y) / Math.log(x);
 }
 
+function convertLog(base, num, a, b) {
+    return a * getLog(base, num) + b;
+}
+
+function convertToCentimeters(num) {
+    return num * CENTIMETERSPERMETER;
+}
+
+function convertToMeters(num) {
+    return num / CENTIMETERSPERMETER;
+}
+
 function isInsideLine(a, b, c) {
     return (((b.x - a.x)*(c.z - a.z) - (b.z - a.z)*(c.x - a.x)) > 0);
 }
@@ -425,17 +462,17 @@ function setLateralDistance(num) {
 }
 
 function setAnteriorDistance(num) {
-    frontEdge = -num;
-    frontLeft.z = frontEdge;
-    frontRight.z = frontEdge;
-    print("anterior distance " + frontEdge);
+    frontBaseProperty.value = num;
+    frontLeft.z = -frontBaseProperty.get();
+    frontRight.z = -frontBaseProperty.get();
+    print("anterior distance " + frontBaseProperty.get());
 }
 
 function setPosteriorDistance(num) {
-    backEdge = num;
-    backLeft.z = backEdge;
-    backRight.z = backEdge;
-    print("posterior distance " + backEdge);
+    backBaseProperty.value = num;
+    backLeft.z = backBaseProperty.get();
+    backRight.z = backBaseProperty.get();
+    print("posterior distance " + backBaseProperty.get());
 }
 
 function setHandAngularVelocityThreshold(num) {
