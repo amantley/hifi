@@ -111,24 +111,33 @@ var useBaseSupport = true;
 var useRunningHeadPosition = false;
 var initApp = true;
 
-function appProperty(name, type, eventType, signalType, setFunction, initValue, convertToThreshold, convertToSlider) {
+function AppProperty(name, type, eventType, signalType, setFunction, initValue, convertToThreshold, convertToSlider) {
     this.name = name;
     this.type = type;
     this.eventType = eventType;
     this.signalType = signalType;
     this.setValue = setFunction;
     this.value = initValue;
-    this.get = function () { return this.value; };
+    this.get = function () {
+        return this.value;
+    };
     this.convertToThreshold = convertToThreshold;
     this.convertToSlider = convertToSlider;
 }
 
-var frontBaseProperty = new appProperty("frontBase", "slider", "onAnteriorBaseSlider", "frontSignal", setAnteriorDistance, -frontEdge,convertToMeters,convertToCentimeters);
-var backBaseProperty = new appProperty("backBase", "slider", "onPosteriorBaseSlider", "backSignal", setPosteriorDistance, backEdge, convertToMeters, convertToCentimeters);
-var lateralBaseProperty = new appProperty("lateralBase", "slider", "onLateralBaseSlider", "lateralSignal", setLateralDistance, lateralEdge, convertToMeters, convertToCentimeters);
-var headAngularVelocityProperty = new appProperty("angularVelocity", "slider", "onAngularVelocitySlider", "angularyVelocitySignal", setAngularThreshold, angularVelocityThreshold, convertExponential, convertLog);
-var heightDifferenceProperty = new appProperty("heightDifference", "slider", "onHeightDifferenceSlider", "heightDifferenceSignal", setHeightThreshold, maxHeightChange, convertToMeters, convertToCentimeters);
-var propArray = new Array(frontBaseProperty, backBaseProperty);
+var frontBaseProperty = new AppProperty("#anteriorBase-slider", "slider", "onAnteriorBaseSlider", "frontSignal", setAnteriorDistance, -frontEdge,convertToMeters,convertToCentimeters);
+var backBaseProperty = new AppProperty("#posteriorBase-slider", "slider", "onPosteriorBaseSlider", "backSignal", setPosteriorDistance, backEdge, convertToMeters, convertToCentimeters);
+var lateralBaseProperty = new AppProperty("#lateralBase-slider", "slider", "onLateralBaseSlider", "lateralSignal", setLateralDistance, lateralEdge, convertToMeters, convertToCentimeters);
+var headAngularVelocityProperty = new AppProperty("#angularVelocityHead-slider", "slider", "onAngularVelocitySlider", "angularHeadSignal", setAngularThreshold, angularVelocityThreshold, convertExponential, convertLog);
+var heightDifferenceProperty = new AppProperty("#heightDifference-slider", "slider", "onHeightDifferenceSlider", "heightSignal", setHeightThreshold, maxHeightChange, convertToMeters, convertToCentimeters);
+var handsVelocityProperty = new AppProperty("#handsVelocity-slider", "slider", "onHandsVelocitySlider", "handVelocitySignal", setHandVelocityThreshold, handVelocityThreshold, noConversion, noConversion);
+var handsAngularVelocityProperty = new AppProperty("#handsAngularVelocity-slider", "slider", "onHandsAngularVelocitySlider", "handAngularSignal", setHandAngularVelocityThreshold, handAngularVelocityThreshold, convertExponential, convertLog);
+var headVelocityProperty = new AppProperty("#headVelocity-slider", "slider", "onHeadVelocitySlider", "headVelocitySignal", setHeadVelocityThreshold, headVelocityThreshold, convertExponential, convertLog);
+var headPitchProperty = new AppProperty("#headPitch-slider", "slider", "onHeadPitchSlider", "headPitchSignal", setHeadPitchThreshold, MAX_LEVEL_PITCH, convertExponential, convertLog);
+var headRollProperty = new AppProperty("#headRoll-slider", "slider", "onHeadRollSlider", "headRollSignal", setHeadRollThreshold, MAX_LEVEL_ROLL, convertExponential, convertLog);
+
+var propArray = new Array(frontBaseProperty, backBaseProperty, lateralBaseProperty, headAngularVelocityProperty,
+    heightDifferenceProperty, handsVelocityProperty, handsAngularVelocityProperty, headVelocityProperty, headPitchProperty, headRollProperty);
 propArray.forEach(function (prop) {
     print(prop.name);
 });
@@ -217,46 +226,39 @@ function onWebEventReceived(msg) {
             break;
         case heightDifferenceProperty.eventType:
             print("height slider " + message.data.value);
-            // var heightDifferenceToleranceMeters = -(message.data.value / 100.0);
-            // setHeightThreshold(heightDifferenceToleranceMeters);
             heightDifferenceProperty.setValue(heightDifferenceProperty.convertToThreshold(-message.data.value));
             break;
-        case "onHandsVelocitySlider":
+        case handsVelocityProperty.eventType:
             print("hands velocity slider " + message.data.value);
-            var handDirectionToHeadDirectionInverseCosine = message.data.value;
-            setHandVelocityThreshold(handDirectionToHeadDirectionInverseCosine);
+            handsVelocityProperty.setValue(handsVelocityProperty.convertToThreshold(message.data.value));
             break;
-        case "onHandsAngularVelocitySlider":
+        case handsAngularVelocityProperty.eventType:
             print("hands angular velocity slider " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 7 raised to the power of the slider input value, which is scaled to 0-2.
             // this makes the real range 48 to 0 for angular velocity tolerance in the hands
-            var angularVelocityHandExponential = Math.pow(7, (2.0 - message.data.value)) - 1.0;
-            setHandAngularVelocityThreshold(angularVelocityHandExponential);
+            handsAngularVelocityProperty.setValue(handsAngularVelocityProperty.convertToThreshold(7, message.data.value, DECREASING, 2.0));
             break;
-        case "onHeadVelocitySlider":
+        case headVelocityProperty.eventType:
             print("head velocity slider " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
-            // this makes the real range 31 to 0 for the velocity tolerance of the head
-            var headVelocityThreshold = Math.pow(2, message.data.value) - 1.0;
-            setHeadVelocityThreshold(headVelocityThreshold);
+            // this makes the real range 0 to 31 for the velocity tolerance of the head
+            headVelocityProperty.setValue(headVelocityProperty.convertToThreshold(2, message.data.value, INCREASING, 0.0));
             break;
-        case "onHeadPitchSlider":
+        case headPitchProperty.eventType:
             print("head pitch slider " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
             // this makes the real range 31 to 0 for the velocity tolerance of the head
-            var headPitchThreshold = Math.pow(2.5, (5.0 - message.data.value)) - 1.0;
-            setHeadPitchThreshold(headPitchThreshold);
+            headPitchProperty.setValue(headPitchProperty.convertToThreshold(2.5, message.data.value, DECREASING, 5.0));
             break;
-        case "onHeadRollSlider":
+        case headRollProperty.eventType:
             print("head roll slider " + message.data.value);
             // the scale of this slider is logarithmic to cover a greater range of values
             // the range of values is 2 raised to the power of the slider input value, which is scaled to 0-5.
             // this makes the real range 31 to 0 for the velocity tolerance of the head
-            var headRollThreshold = Math.pow(2.5, (5.0 - message.data.value)) - 1.0;
-            setHeadRollThreshold(headRollThreshold);
+            headRollProperty.setValue(headRollProperty.convertToThreshold(2.5, message.data.value, DECREASING, 5.0));
             break;
         case "onModeCheckBox":
             print("mode check called" + message.data.value);
@@ -285,36 +287,29 @@ function onWebEventReceived(msg) {
 
 function initAppForm() {
     print("step app is loaded: " + documentLoaded);
-    tablet.emitScriptEvent(JSON.stringify({ "type": frontBaseProperty.name, "data": { "value": frontBaseProperty.convertToSlider(frontBaseProperty.value) } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": backBaseProperty.name, "data": { "value": backBaseProperty.convertToSlider(backBaseProperty.value) } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": lateralBaseProperty.name, "data": { "value": lateralBaseProperty.convertToSlider(lateralBaseProperty.value) } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": headAngularVelocityProperty.name, "data": { "value": headAngularVelocityProperty.convertToSlider(headAngularVelocityProperty.value) } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": heightDifferenceProperty.name, "data": { "value": -heightDifferenceProperty.convertToSlider(heightDifferenceProperty.value) } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "handsVelocity", "data": { "value": handVelocityThreshold } }));
-    var angularVelocityHandLogarithmic = (-1.0 * getLog(7, (handAngularVelocityThreshold + 1)) + 2.0);
-    tablet.emitScriptEvent(JSON.stringify({ "type": "handsAngularVelocity", "data": { "value": angularVelocityHandLogarithmic } }));
-    var headVelocityLogarithmic = getLog(2, (headVelocityThreshold + 1));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "headVelocity", "data": { "value": headVelocityLogarithmic } }));
-    var headPitchLogarithmic = getLog(2.5, (MAX_LEVEL_PITCH + 1));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "headPitch", "data": { "value": headPitchLogarithmic } }));
-    var headRollLogarithmic = getLog(2.5, (MAX_LEVEL_ROLL + 1));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "headRoll", "data": { "value": headRollLogarithmic } }));
+    propArray.forEach(function (prop) {
+        print(prop.name);
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": prop.signalType, "data": { "value": "green" } }));
+    });
+    
+    // tablet.emitScriptEvent(JSON.stringify({ "type": frontBaseProperty.name, "data": { "value": frontBaseProperty.convertToSlider(frontBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": frontBaseProperty.name, "data": { "value": frontBaseProperty.convertToSlider(frontBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": backBaseProperty.name, "data": { "value": backBaseProperty.convertToSlider(backBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": lateralBaseProperty.name, "data": { "value": lateralBaseProperty.convertToSlider(lateralBaseProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": headAngularVelocityProperty.name, "data": { "value": headAngularVelocityProperty.convertToSlider(4, headAngularVelocityProperty.value, DECREASING, 2.0) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": heightDifferenceProperty.name, "data": { "value": -heightDifferenceProperty.convertToSlider(heightDifferenceProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": handsVelocityProperty.name, "data": { "value": handsVelocityProperty.convertToSlider(handsVelocityProperty.value) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": handsAngularVelocityProperty.name, "data": { "value": handsAngularVelocityProperty.convertToSlider(7, handsAngularVelocityProperty.value, DECREASING, 2.0) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": headVelocityProperty.name, "data": { "value": headVelocityProperty.convertToSlider(2, headVelocityProperty.value, INCREASING, 0.0) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": headPitchProperty.name, "data": { "value": headPitchProperty.convertToSlider(2.5, headPitchProperty.value, DECREASING, 5.0) } }));
+    tablet.emitScriptEvent(JSON.stringify({ "type": "slider", "id": headRollProperty.name, "data": { "value": headPitchProperty.convertToSlider(2.5, headRollProperty.value, DECREASING, 5.0) } }));
+    
     // init checkboxes
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "modeCheck" ,"data": { "value": useMode } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "runningAverageHeightCheck", "data": { "value": useRunningHeight } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "baseOfSupportCheck", "data": { "value": useBaseSupport } }));
     tablet.emitScriptEvent(JSON.stringify({ "type": "checkboxtick", "id": "headAveragePositionCheck", "data": { "value": useRunningHeadPosition } }));
-    // init signal colors
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": frontBaseProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": backBaseProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": lateralBaseProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headAngularVelocityProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": heightDifferenceProperty.signalType, "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headPitchSignal", "data": { "value": "green" } }));
-    tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headRollSignal", "data": { "value": "green" } }));
+    
 }
 
 function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, xzRHAngVel, xzLHAngVel, headPoseValid, headSpeed, headPitch, headRoll) {
@@ -358,40 +353,40 @@ function updateSignalColors(isSupported, xzAngVel, heightDiff, lhPose, rhPose, x
     // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
     if ((handVelocityThreshold > -0.98) && !((!lhPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON)))
       && (!rhPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON))))) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": handsVelocityProperty.signalType, "data": { "value": "red" } }));
     } else {
         // otherwise we are not blocked from translating
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handVelocitySignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": handsVelocityProperty.signalType, "data": { "value": "green" } }));
     }
 
     // if the hand angular velocity for both hands is not lower than the threshold
     if (!((!rhPose.valid || (xzRHAngVel < handAngularVelocityThreshold)) && (!lhPose.valid || (xzLHAngVel < handAngularVelocityThreshold)))) {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": handsAngularVelocityProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "handAngularSignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": handsAngularVelocityProperty.signalType, "data": { "value": "green" } }));
     }
 
     if (headSpeed < headVelocityThreshold) {
         // if head speed is below threshold then don't translate
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headVelocityProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headVelocitySignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headVelocityProperty.signalType, "data": { "value": "green" } }));
     }
 
     if (headPitch > MAX_LEVEL_PITCH) {
         // print("headpitch " + headPitch);
         // if head pitch is above threshold then don't translate
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headPitchSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headPitchProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headPitchSignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headPitchProperty.signalType, "data": { "value": "green" } }));
     }
 
     if (headRoll > MAX_LEVEL_ROLL) {
         // if head roll is above threshold then don't translate
         // print("headRoll" + headRoll);
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headRollSignal", "data": { "value": "red" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headRollProperty.signalType, "data": { "value": "red" } }));
     } else {
-        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": "headRollSignal", "data": { "value": "green" } }));
+        tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": headRollProperty.signalType, "data": { "value": "green" } }));
     }
 
 }
@@ -420,6 +415,10 @@ function getLog(x, y) {
     return Math.log(y) / Math.log(x);
 }
 
+function noConversion(num) {
+    return num;
+}
+
 function convertLog(base, num, direction, shift) {
     return direction * getLog(base, (num + 1.0)) + shift;
 }
@@ -446,13 +445,13 @@ function setAngularThreshold(num) {
 }
 
 function setHeadRollThreshold(num) {
-    MAX_LEVEL_ROLL = num;
-    print("head roll threshold " + MAX_LEVEL_ROLL);
+    headRollProperty.value = num;
+    print("head roll threshold " + headRollProperty.get());
 }
 
 function setHeadPitchThreshold(num) {
-    MAX_LEVEL_PITCH = num;
-    print("head pitch threshold " + MAX_LEVEL_PITCH);
+    headPitchProperty.value = num;
+    print("head pitch threshold " + headPitchProperty.get());
 }
 
 function setHeightThreshold(num) {
@@ -484,18 +483,18 @@ function setPosteriorDistance(num) {
 }
 
 function setHandAngularVelocityThreshold(num) {
-    handAngularVelocityThreshold = num;
-    print("hand angular velocity threshold " + handAngularVelocityThreshold);
+    handsAngularVelocityProperty.value = num;
+    print("hand angular velocity threshold " + handsAngularVelocityProperty.get());
 }
 
 function setHandVelocityThreshold(num) {
-    handVelocityThreshold = num;
-    print("hand velocity threshold " + handVelocityThreshold);
+    handsVelocityProperty.value = num;
+    print("hand velocity threshold " + handsVelocityProperty.get());
 }
 
 function setHeadVelocityThreshold(num) {
-    headVelocityThreshold = num;
-    print("headvelocity threshold " + headVelocityThreshold);
+    headVelocityProperty.value = num;
+    print("headvelocity threshold " + headVelocityProperty.get());
 }
 
 function withinBaseOfSupport(pos) {
@@ -507,29 +506,28 @@ function withinBaseOfSupport(pos) {
 }
 
 function withinThresholdOfStandingHeightMode(heightDiff) {
-    return (heightDiff < maxHeightChange) && useMode;
+    return (heightDiff < heightDifferenceProperty.get()) && useMode;
 }
 
 function headAngularVelocityBelowThreshold(angVel) {
-    return angVel < angularVelocityThreshold;
+    return angVel < headAngularVelocityProperty.get();
 }
 
 function handDirectionMatchesHeadDirection(lhPose, rhPose) {
-    return ((handVelocityThreshold < -0.98) ||
-        ((!lhPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))) &&
-        (!rhPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))));
+    return ((handsVelocityProperty.get() < -0.98) ||
+        ((!lhPose.valid || ((handDotHead[LEFT] > handsVelocityProperty.get()) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))) &&
+        (!rhPose.valid || ((handDotHead[RIGHT] > handsVelocityProperty.get()) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))));
 }
 
 function handAngularVelocityBelowThreshold(lhPose, rhPose) {
     var xzRHandAngularVelocity = Vec3.length({ x: rhPose.angularVelocity.x, y: 0.0, z: rhPose.angularVelocity.z });
     var xzLHandAngularVelocity = Vec3.length({ x: lhPose.angularVelocity.x, y: 0.0, z: lhPose.angularVelocity.z });
-    return ((!rhPose.valid ||(xzRHandAngularVelocity < handAngularVelocityThreshold)) 
-         && (!lhPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)));
-
+    return ((!rhPose.valid ||(xzRHandAngularVelocity < handsAngularVelocityProperty.get())) 
+         && (!lhPose.valid || (xzLHandAngularVelocity < handsAngularVelocityProperty.get())));
 }
 
 function headVelocityGreaterThanThreshold(headVel) {
-    return headVel > headVelocityThreshold;
+    return headVel > headVelocityProperty.get();
 }
 
 function headMovedAwayFromAveragePosition(headDelta) {
@@ -537,11 +535,11 @@ function headMovedAwayFromAveragePosition(headDelta) {
 }
 
 function headLowerThanHeightAverage(heightDiff) {
-    return (heightDiff < maxHeightChange) || !useRunningHeight;
+    return (heightDiff < heightDifferenceProperty.get()) || !useRunningHeight;
 }
 
 function isHeadLevel(eulers, averageEulers) {
-    return (Math.abs(eulers.z - averageEulers.z) < MAX_LEVEL_ROLL) && (Math.abs(eulers.x - averageEulers.x) < MAX_LEVEL_PITCH);
+    return (Math.abs(eulers.z - averageEulers.z) < headRollProperty.get()) && (Math.abs(eulers.x - averageEulers.x) < headPitchProperty.get());
 }
 function getStationaryFudgeFactor() {
     // if no translation for 30 seconds then we raise the bar for translating by 1cm
@@ -734,38 +732,37 @@ function update(dt) {
         tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "green" } }));
         // in fail safe we debug print the values that were blocking us.
         print("failsafe debug---------------------------------------------------------------");
-        if (!(!inSupport || !useBaseSupport)) {
+        if (!withinBaseOfSupport(headPosAvatarSpace)) {
             print("1. inSupport base of support: true");
         }
-        if (!(xzAngularVelocity < angularVelocityThreshold)) {
-            print("2. angular velocity exceeded threshold");
-        }
         // if we are lower than the height tolerance relative to the height mode
-        if (!((heightDifferenceFromAverage < maxHeightChange) || !useMode)) {
+        if (!withinThresholdOfStandingHeightMode(heightDifferenceFromAverage)) {
             print("3. height was too far below the mode");
-            print("max height change: " + maxHeightChange);
+            print("max height change: " + heightDifferenceProperty.get());
             print("head height from contoller " + headPose.translation.y);
             print("the current mode height value " + modeHeight);
         }
+        if (!headAngularVelocityBelowThreshold(xzAngularVelocity)) {
+            print("2. angular velocity exceeded threshold");
+        }
         // if both hand poses are valid but not matching the direction of the head more than our handVelocityThreshold
-        if ((handVelocityThreshold > -0.98) && !((!leftHandPose.valid || ((handDotHead[LEFT] > handVelocityThreshold) && (Vec3.length(leftHandPose.velocity) > VELOCITY_EPSILON)))
-          && (!rightHandPose.valid || ((handDotHead[RIGHT] > handVelocityThreshold) && (Vec3.length(rightHandPose.velocity) > VELOCITY_EPSILON))))) {
+        if (!handDirectionMatchesHeadDirection(leftHandPose, rightHandPose)) {
             print("4. hands were not following the head direction");
         } 
         // if the hand angular velocity for both hands is not lower than the threshold
-        if (!((!rightHandPose.valid || (xzRHandAngularVelocity < handAngularVelocityThreshold)) && (!leftHandPose.valid || (xzLHandAngularVelocity < handAngularVelocityThreshold)))) {
+        if (!handAngularVelocityBelowThreshold(leftHandPose, rightHandPose)) {
             print("5. hands angular velocity exceeded threshold");
         }
-        if (Vec3.length(headPose.velocity) < headVelocityThreshold) {
+        if (!headVelocityGreaterThanThreshold(Vec3.length(headPose.velocity))) {
             // if head speed is below threshold then don't translate
             print("6. head speed was too low");
         }
         // head lateral movement
-        if (!(!isLessThanMinStepDistanceFromAverage || !useRunningHeadPosition)) {
+        if (!headMovedAwayFromAveragePosition(deltaHead)) {
             print("7. head lateral movement from average head position not sufficient");
         }
-        // head lateral movement
-        if (!((heightDifferenceFromAveragePhilip < maxHeightChange) || !useRunningHeight)) {
+        // head lower than running average
+        if (!headLowerThanHeightAverage(heightDifferenceFromAveragePhilip)) {
             print("8. head height too low from average head position");
         }
         if (!isHeadLevel(headEulers, headAverageEulers)) {
