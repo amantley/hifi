@@ -12,7 +12,7 @@ var DECREASING = -1.0;
 var DEFAULT_AVATAR_HEIGHT = 1.64;
 var TABLET_BUTTON_NAME = "STEP";
 var CHANGE_OF_BASIS_ROTATION = { x: 0, y: 1, z: 0, w: 0 };
-// in centimeters
+// in meters (mostly)
 var DEFAULT_ANTERIOR = 0.04;
 var DEFAULT_POSTERIOR = 0.06;
 var DEFAULT_LATERAL = 0.10;
@@ -23,50 +23,52 @@ var DEFAULT_ANGULAR_HAND_VELOCITY = 3.3;
 var DEFAULT_HEAD_VELOCITY = 0.14;
 var DEFAULT_LEVEL_PITCH = 7;
 var DEFAULT_LEVEL_ROLL = 7;
+var DEFAULT_DIFF = 0.0;
+var DEFAULT_DIFF_EULERS = { x: 0.0, y: 0.0, z: 0.0 };
+var DEFAULT_HIPS_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
+var DEFAULT_HEAD_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+var DEFAULT_TORSO_LENGTH = Vec3.length(Vec3.subtract(DEFAULT_HEAD_POSITION, DEFAULT_HIPS_POSITION));
+var SPINE_STRETCH_LIMIT = 0.07;
+
 var VELOCITY_EPSILON = 0.02;
-var ROT_Y180 = {x: 0, y: 1, z: 0, w: 0};
-var MIN_STEP_DISTANCE = 0.03;
-var DONE_STEPPING_DISTANCE = 0.01;
 var AVERAGING_RATE = 0.03;
 var HEIGHT_AVERAGING_RATE = 0.01;
-var STEP_VELOCITY_THRESHOLD = 0.05;
 var STEP_TIME_SECS = 0.6;
 var MODE_SAMPLE_LENGTH = 100;
 var RESET_MODE = false;
 var HEAD_TURN_THRESHOLD = 25.0;
 var NO_SHARED_DIRECTION = -0.98;
 var LOADING_DELAY = 500;
-var SPINE_STRETCH_LIMIT = 0.07;
-var DEFAULT_HIPS_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-var DEFAULT_HEAD_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-var DEFAULT_TORSO_LENGTH = Vec3.length(Vec3.subtract(DEFAULT_HEAD_POSITION, DEFAULT_HIPS_POSITION));
 
-var failsafeFlag = false;
-var failsafeSignalTimer = -1.0;
-var frontLeft = { x: -DEFAULT_LATERAL, y: 0, z: DEFAULT_ANTERIOR };
-var frontRight = { x: DEFAULT_LATERAL, y: 0, z: DEFAULT_ANTERIOR };
-var backLeft = { x: -DEFAULT_LATERAL, y: 0, z: DEFAULT_POSTERIOR };
-var backRight = { x: DEFAULT_LATERAL, y: 0, z: DEFAULT_POSTERIOR };
-var modeArray = new Array(MODE_SAMPLE_LENGTH);
-var modeHeight = -10.0;
-var stepTimer = -1.0;
-var handDotHead = [];
-var headPosition;
-var headAverageOrientation = MyAvatar.orientation;
-var headPoseAverageOrientation = { x: 0, y: 0, z: 0, w: 1 };
-var averageHeight = 1.0;
-var handPosition;
-var handOrientation;
-var headOrientation;
-var hipToHandAverage = []; 
-var hands = [];
-var headEulers;
-var headAverageEulers;
+
+var initApp = true;
 var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
+var failsafeFlag = false;
+var failsafeSignalTimer = -1.0;
+var stepTimer = -1.0;
+
+
+var modeArray = new Array(MODE_SAMPLE_LENGTH);
+var modeHeight = -10.0;
+
+var handPosition;
+var handOrientation;
+var hands = [];
+var hipToHandAverage = [];
+var handDotHead = [];
+var headAverageOrientation = MyAvatar.orientation;
+var headPoseAverageOrientation = { x: 0, y: 0, z: 0, w: 1 };
+var averageHeight = 1.0;
+var headEulers = { x: 0.0, y: 0.0, z: 0.0 };
+var headAverageEulers = { x: 0.0, y: 0.0, z: 0.0 };
 var headAveragePosition = { x: 0, y: 0.4, z: 0 };
-var initApp = true;
+var frontLeft = { x: -DEFAULT_LATERAL, y: 0, z: -DEFAULT_ANTERIOR };
+var frontRight = { x: DEFAULT_LATERAL, y: 0, z: -DEFAULT_ANTERIOR };
+var backLeft = { x: -DEFAULT_LATERAL, y: 0, z: DEFAULT_POSTERIOR };
+var backRight = { x: DEFAULT_LATERAL, y: 0, z: DEFAULT_POSTERIOR };
+
 
 // define state readings constructor
 function StateReading(headPose, rhandPose, lhandPose, backLength, diffFromMode, diffFromAverageHeight, diffFromAveragePosition,
@@ -81,12 +83,12 @@ function StateReading(headPose, rhandPose, lhandPose, backLength, diffFromMode, 
     this.diffFromAverageEulers = diffFromAverageEulers;
 }
 
-//define current state readings object for holding tracker readings and current differences from averages
+// define current state readings object for holding tracker readings and current differences from averages
 var currentStateReadings = new StateReading(Controller.getPoseValue(Controller.Standard.Head),
     Controller.getPoseValue(Controller.Standard.RightHand), Controller.getPoseValue(Controller.Standard.LeftHand),
-    DEFAULT_TORSO_LENGTH, 0.0, 0.0, 0.0, { x: 0, y: 0, z: 0 });
+    DEFAULT_TORSO_LENGTH, DEFAULT_DIFF, DEFAULT_DIFF, DEFAULT_DIFF, DEFAULT_DIFF_EULERS);
 
-//declare the checkbox constructor
+// declare the checkbox constructor
 function AppCheckbox(type,id,eventType,isChecked) {
     this.type = type;
     this.id = id;
@@ -117,11 +119,12 @@ function AppProperty(name, type, eventType, signalType, setFunction, initValue, 
     };
     this.convertToThreshold = convertToThreshold;
     this.convertToSlider = convertToSlider;
+    this.signalOn = signalOn;
 }
 
 // define the sliders
 var frontBaseProperty = new AppProperty("#anteriorBase-slider", "slider", "onAnteriorBaseSlider", "frontSignal",
-    setAnteriorDistance, -DEFAULT_ANTERIOR, function (num) {
+    setAnteriorDistance, DEFAULT_ANTERIOR, function (num) {
         return convertToMeters(num);
     }, function (num) {
         return convertToCentimeters(num);
@@ -150,9 +153,9 @@ var headAngularVelocityProperty = new AppProperty("#angularVelocityHead-slider",
     }, true);
 var heightDifferenceProperty = new AppProperty("#heightDifference-slider", "slider", "onHeightDifferenceSlider", "heightSignal",
     setHeightThreshold, DEFAULT_HEIGHT_DIFFERENCE, function (num) {
-        return convertToMeters(num);
+        return convertToMeters(-num);
     }, function (num) {
-        return convertToCentimeters(num);
+        return convertToCentimeters(-num);
     }, true);
 var handsVelocityProperty = new AppProperty("#handsVelocity-slider", "slider", "onHandsVelocitySlider", "handVelocitySignal",
     setHandVelocityThreshold, DEFAULT_HAND_VELOCITY, function (num) {
@@ -206,7 +209,7 @@ var propArray = new Array(frontBaseProperty, backBaseProperty, lateralBaseProper
     headRollProperty);
 
 // var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
-var HTML_URL = Script.resolvePath("file:///c:/dev/high fidelity/hifi/scripts/developer/stepAppExtra.html");
+var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepAppExtra.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -225,17 +228,12 @@ var tabletButton = tablet.addButton({
 
 function drawBase() {
     // transform corners into world space, for rendering.
-    // var avatarXform = new Xform(MyAvatar.orientation, MyAvatar.position);
     var worldPointLf = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, frontLeft));
     var worldPointRf = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, frontRight));
     var worldPointLb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backLeft));
     var worldPointRb = Vec3.sum(MyAvatar.position,Vec3.multiplyQbyV(MyAvatar.orientation, backRight));
-    
-    // print("world point is left front is: " + worldPointLf.x + " " + worldPointLf.y + " " + worldPointLf.z);
-    // print("front left point is " + frontLeft.x + " " + frontLeft.y + " " + frontLeft.z);
 
     var GREEN = { r: 0, g: 1, b: 0, a: 1 };
-    
     // draw border
     DebugDraw.drawRay(worldPointLf, worldPointRf, GREEN);
     DebugDraw.drawRay(worldPointRf, worldPointRb, GREEN);
@@ -270,8 +268,8 @@ function onWebEventReceived(msg) {
 
 function initAppForm() {
     print("step app is loaded: " + documentLoaded);
+    initApp = true;
     propArray.forEach(function (prop) {
-        print(prop.name);
         tablet.emitScriptEvent(JSON.stringify({
             "type": "trigger",
             "id": prop.signalType,
@@ -287,7 +285,7 @@ function initAppForm() {
         tablet.emitScriptEvent(JSON.stringify({
             "type": "checkboxtick",
             "id": cbox.id,
-            "data": { value: cbox.data.value }
+            "data": { "value": cbox.data.value }
         }));
     });
  
@@ -295,7 +293,7 @@ function initAppForm() {
 
 function updateSignalColors() {
 
-    //force the updates by running the threshold comparisons
+    // force the updates by running the threshold comparisons
     withinBaseOfSupport(currentStateReadings.headPose.translation);
     withinThresholdOfStandingHeightMode(currentStateReadings.diffFromMode);
     headAngularVelocityBelowThreshold(currentStateReadings.headPose.angularVelocity);
@@ -424,18 +422,21 @@ function setHeadVelocityThreshold(num) {
 }
 
 function withinBaseOfSupport(pos) {
-    //print("in base of support test");
     var userScale = 1.0;
     frontBaseProperty.signalOn = !(isInsideLine(Vec3.multiply(userScale, frontLeft), Vec3.multiply(userScale, frontRight), pos));
     backBaseProperty.signalOn = !(isInsideLine(Vec3.multiply(userScale, backRight), Vec3.multiply(userScale, backLeft), pos));
-    lateralBaseProperty.signalOn = !(isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos) && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
+    lateralBaseProperty.signalOn = !(isInsideLine(Vec3.multiply(userScale, frontRight), Vec3.multiply(userScale, backRight), pos)
+        && isInsideLine(Vec3.multiply(userScale, backLeft), Vec3.multiply(userScale, frontLeft), pos));
     return (!frontBaseProperty.signalOn && !backBaseProperty.signalOn && !lateralBaseProperty.signalOn);
 }
 
 function withinThresholdOfStandingHeightMode(heightDiff) {
-    //print("within standing height mode ");
-    heightDifferenceProperty.signalOn = heightDiff < heightDifferenceProperty.get();
-    return usingModeHeight.data.value && heightDifferenceProperty.signalOn;
+    if (usingModeHeight.data.value) {
+        heightDifferenceProperty.signalOn = heightDiff < heightDifferenceProperty.get();
+        return heightDifferenceProperty.signalOn;
+    } else {
+        return true;
+    }
 }
 
 function headAngularVelocityBelowThreshold(headAngularVelocity) {
@@ -445,15 +446,15 @@ function headAngularVelocityBelowThreshold(headAngularVelocity) {
 }
 
 function handDirectionMatchesHeadDirection(lhPose, rhPose) {
-    //print("hand direction test");
     handsVelocityProperty.signalOn = ((handsVelocityProperty.get() < NO_SHARED_DIRECTION) ||
-        ((!lhPose.valid || ((handDotHead[LEFT] > handsVelocityProperty.get()) && (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))) &&
-        (!rhPose.valid || ((handDotHead[RIGHT] > handsVelocityProperty.get()) && (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))));
+        ((!lhPose.valid || ((handDotHead[LEFT] > handsVelocityProperty.get()) &&
+        (Vec3.length(lhPose.velocity) > VELOCITY_EPSILON))) &&
+        (!rhPose.valid || ((handDotHead[RIGHT] > handsVelocityProperty.get()) &&
+        (Vec3.length(rhPose.velocity) > VELOCITY_EPSILON)))));
     return handsVelocityProperty.signalOn;
 }
 
 function handAngularVelocityBelowThreshold(lhPose, rhPose) {
-    //print("hand angular velocity test");
     var xzRHandAngularVelocity = Vec3.length({ x: rhPose.angularVelocity.x, y: 0.0, z: rhPose.angularVelocity.z });
     var xzLHandAngularVelocity = Vec3.length({ x: lhPose.angularVelocity.x, y: 0.0, z: lhPose.angularVelocity.z });
     handsAngularVelocityProperty.signalOn = ((!rhPose.valid ||(xzRHandAngularVelocity < handsAngularVelocityProperty.get())) 
@@ -462,26 +463,27 @@ function handAngularVelocityBelowThreshold(lhPose, rhPose) {
 }
 
 function headVelocityGreaterThanThreshold(headVel) {
-    //print("head velocity test " + headVel);
     headVelocityProperty.signalOn = (headVel > headVelocityProperty.get()) || (headVelocityProperty.get() < VELOCITY_EPSILON);
     return headVelocityProperty.signalOn;
 }
 
 function headMovedAwayFromAveragePosition(headDelta) {
-    //print("head average position test");
     return !withinBaseOfSupport(headDelta) || !usingAverageHeadPosition.data.value;
 }
 
 function headLowerThanHeightAverage(heightDiff) {
-    //print("head average height test");
-    heightDifferenceProperty.signalOn = (heightDiff < heightDifferenceProperty.get()) || !usingAverageHeight.data.value;
-    return heightDifferenceProperty.signalOn;
+    if (usingAverageHeight.data.value) {
+        print("head lower than height average");
+        heightDifferenceProperty.signalOn = heightDiff < heightDifferenceProperty.get();
+        return heightDifferenceProperty.signalOn;
+    } else {
+        return true;
+    }
 }
 
 function isHeadLevel(diffEulers) {
     headRollProperty.signalOn = Math.abs(diffEulers.z) < headRollProperty.get();
     headPitchProperty.signalOn = Math.abs(diffEulers.x) < headPitchProperty.get();
-    //print("pitch and roll values " + headRollProperty.signalOn + " " + headPitchProperty.signalOn);
     return (headRollProperty.signalOn && headPitchProperty.signalOn);
 }
 
@@ -529,55 +531,51 @@ function update(dt) {
     if (debugDrawBase) {
         drawBase();
     }
-    //  Update head information
+    //  Update current state information
     currentStateReadings.headPose = Controller.getPoseValue(Controller.Standard.Head);
     currentStateReadings.rhandPose = Controller.getPoseValue(Controller.Standard.RightHand);
     currentStateReadings.lhandPose = Controller.getPoseValue(Controller.Standard.LeftHand);
+
+    // back length
     var headMinusHipLean = Vec3.subtract(currentStateReadings.headPose.translation, DEFAULT_HIPS_POSITION);
     currentStateReadings.backLength = Vec3.length(headMinusHipLean);
-    var headPoseRigSpace = Quat.multiply(CHANGE_OF_BASIS_ROTATION, currentStateReadings.headPose.rotation);
 
-    headEulers = Quat.safeEulerAngles(currentStateReadings.headPose.rotation);
-    headAveragePosition = Vec3.mix(headAveragePosition, currentStateReadings.headPose.translation, AVERAGING_RATE);
-    averageHeight = currentStateReadings.headPose.translation.y * HEIGHT_AVERAGING_RATE + averageHeight * (1.0 - HEIGHT_AVERAGING_RATE);
-    headAverageOrientation = Quat.slerp(headAverageOrientation, currentStateReadings.headPose.rotation, AVERAGING_RATE);
-    headAverageEulers = Quat.safeEulerAngles(headAverageOrientation);
-    // the rig space version is used for rotation recenter and nothing else
-    headPoseAverageOrientation = Quat.slerp(headPoseAverageOrientation, headPoseRigSpace, AVERAGING_RATE);
-    var headPoseAverageEulers = Quat.safeEulerAngles(headPoseAverageOrientation);
-    currentStateReadings.diffFromAverageEulers = Vec3.subtract(headAverageEulers, headEulers);
-    // compute mode
-    addToModeArray(modeArray,currentStateReadings.headPose.translation.y);
-    modeHeight = findMode(modeArray, modeHeight, currentStateReadings.backLength, DEFAULT_TORSO_LENGTH, currentStateReadings.headPose.translation.y);
+    // mode height
+    addToModeArray(modeArray, currentStateReadings.headPose.translation.y);
+    modeHeight = findMode(modeArray, modeHeight, currentStateReadings.backLength, DEFAULT_TORSO_LENGTH,
+        currentStateReadings.headPose.translation.y);
     currentStateReadings.diffFromMode = modeHeight - currentStateReadings.headPose.translation.y;
-    currentStateReadings.diffFromAveragePosition = Vec3.subtract(currentStateReadings.headPose.translation, headAveragePosition);
+
+    // hand direction
+    var leftHandLateralPoseVelocity = currentStateReadings.lhandPose.velocity;
+    leftHandLateralPoseVelocity.y = 0.0;
+    var rightHandLateralPoseVelocity = currentStateReadings.rhandPose.velocity;
+    rightHandLateralPoseVelocity.y = 0.0;
+    var headLateralPoseVelocity = currentStateReadings.headPose.velocity;
+    headLateralPoseVelocity.y = 0.0;
+    handDotHead[LEFT] = Vec3.dot(Vec3.normalize(leftHandLateralPoseVelocity), Vec3.normalize(headLateralPoseVelocity));
+    handDotHead[RIGHT] = Vec3.dot(Vec3.normalize(rightHandLateralPoseVelocity), Vec3.normalize(headLateralPoseVelocity));
+    
+    // average head position
+    headAveragePosition = Vec3.mix(headAveragePosition, currentStateReadings.headPose.translation, AVERAGING_RATE);
+    currentStateReadings.diffFromAveragePosition = Vec3.subtract(currentStateReadings.headPose.translation,
+        headAveragePosition);
+
+    // average height
+    averageHeight = currentStateReadings.headPose.translation.y * HEIGHT_AVERAGING_RATE +
+        averageHeight * (1.0 - HEIGHT_AVERAGING_RATE);
     currentStateReadings.diffFromAverageHeight = Math.abs(currentStateReadings.headPose.translation.y - averageHeight);
 
-    // Get the hands velocity relative to the head
-    // and the hand to hip vector to determine when to change head rotation. 
-    for (var hand = LEFT; hand <= RIGHT; hand++) {
-        //  Update hand object 
-        var pose = Controller.getPoseValue((hand === 1) ? Controller.Standard.RightHand : Controller.Standard.LeftHand);
-        if (hand === 1) {
-            // print("right hand velocity" + pose.velocity.x + " " + pose.velocity.y + " " + pose.velocity.z);
-            // print("magnitude " + Vec3.length({x: pose.velocity.x,y: 0.0,z: pose.velocity.z}));
-        } 
-        var lateralPoseVelocity = {x: 0, y: 0, z: 0};
-        if (pose.valid && currentStateReadings.headPose.valid) {
-            lateralPoseVelocity = pose.velocity;
-            lateralPoseVelocity.y = 0;
-            var lateralHeadVelocity = currentStateReadings.headPose.velocity;
-            lateralHeadVelocity.y = 0;
-            handDotHead[hand] = Vec3.dot(Vec3.normalize(lateralPoseVelocity), Vec3.normalize(lateralHeadVelocity));
-        }
+    // eulers diff
+    headEulers = Quat.safeEulerAngles(currentStateReadings.headPose.rotation);
+    headAverageOrientation = Quat.slerp(headAverageOrientation, currentStateReadings.headPose.rotation, AVERAGING_RATE);
+    headAverageEulers = Quat.safeEulerAngles(headAverageOrientation);
+    currentStateReadings.diffFromAverageEulers = Vec3.subtract(headAverageEulers, headEulers);
 
-        //  handPosition = Mat4.transformPoint(avatarToWorldMatrix, pose.translation);
-        handPosition = (hand === 1) ? currentStateReadings.rhandPose.translation : currentStateReadings.lhandPose.translation;
-        handOrientation = Quat.multiply(MyAvatar.orientation, pose.rotation);
-        //  Update angle from hips to hand, to be used for turning 
-        var hipToHand = Quat.lookAtSimple({ x: 0, y: 0, z: 0 }, { x: handPosition.x, y: 0, z: handPosition.z });
-        hipToHandAverage[hand] = Quat.slerp(hipToHandAverage[hand], hipToHand, AVERAGING_RATE);
-    }
+    // headpose rig space is for determining when to recenter rotation.
+    var headPoseRigSpace = Quat.multiply(CHANGE_OF_BASIS_ROTATION, currentStateReadings.headPose.rotation);
+    headPoseAverageOrientation = Quat.slerp(headPoseAverageOrientation, headPoseRigSpace, AVERAGING_RATE);
+    var headPoseAverageEulers = Quat.safeEulerAngles(headPoseAverageOrientation);
 
     // make the signal colors reflect the current thresholds that have been crossed
     updateSignalColors();
@@ -611,10 +609,12 @@ function update(dt) {
             MyAvatar.triggerHorizontalRecenter();
             stepTimer = STEP_TIME_SECS;
         }
-    } else if ((currentStateReadings.backLength > (DEFAULT_TORSO_LENGTH + SPINE_STRETCH_LIMIT)) && (failsafeSignalTimer < 0.0) && HMD.active) {
+    } else if ((currentStateReadings.backLength > (DEFAULT_TORSO_LENGTH + SPINE_STRETCH_LIMIT)) &&
+        (failsafeSignalTimer < 0.0) && HMD.active) {
         // do the failsafe recenter.
         // failsafeFlag stops repeated setting of failsafe button color.
         // RESET_MODE false forces a reset of the height
+        print("torso printout" + DEFAULT_TORSO_LENGTH + " " + currentStateReadings.backLength);
         RESET_MODE = false;
         failsafeFlag = true;
         var failsafeTimeout = 2.5;
