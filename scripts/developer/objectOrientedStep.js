@@ -68,6 +68,7 @@ var documentLoaded = false;
 var headAveragePosition = { x: 0, y: 0.4, z: 0 };
 var initApp = true;
 
+// define state readings constructor
 function StateReading(headPose, rhandPose, lhandPose, backLength, diffFromMode, diffFromAverageHeight, diffFromAveragePosition,
     diffFromAverageEulers) {
     this.headPose = headPose;
@@ -80,10 +81,12 @@ function StateReading(headPose, rhandPose, lhandPose, backLength, diffFromMode, 
     this.diffFromAverageEulers = diffFromAverageEulers;
 }
 
+//define current state readings object for holding tracker readings and current differences from averages
 var currentStateReadings = new StateReading(Controller.getPoseValue(Controller.Standard.Head),
     Controller.getPoseValue(Controller.Standard.RightHand), Controller.getPoseValue(Controller.Standard.LeftHand),
     DEFAULT_TORSO_LENGTH, 0.0, 0.0, 0.0, { x: 0, y: 0, z: 0 });
 
+//declare the checkbox constructor
 function AppCheckbox(type,id,eventType,isChecked) {
     this.type = type;
     this.id = id;
@@ -91,6 +94,7 @@ function AppCheckbox(type,id,eventType,isChecked) {
     this.data = {value: isChecked};
 }
 
+// define the checkboxes in the html file
 var usingAverageHeight = new AppCheckbox("checkboxtick", "runningAverageHeightCheck", "onRunningAverageHeightCheckBox",
     false);
 var usingModeHeight = new AppCheckbox("checkboxtick","modeCheck","onModeCheckBox",true);
@@ -100,6 +104,7 @@ var usingAverageHeadPosition = new AppCheckbox("checkboxtick", "headAveragePosit
 
 var checkBoxArray = new Array(usingAverageHeight,usingModeHeight,usingBaseOfSupport,usingAverageHeadPosition);
 
+// declare the html slider constructor
 function AppProperty(name, type, eventType, signalType, setFunction, initValue, convertToThreshold, convertToSlider, signalOn) {
     this.name = name;
     this.type = type;
@@ -114,6 +119,7 @@ function AppProperty(name, type, eventType, signalType, setFunction, initValue, 
     this.convertToSlider = convertToSlider;
 }
 
+// define the sliders
 var frontBaseProperty = new AppProperty("#anteriorBase-slider", "slider", "onAnteriorBaseSlider", "frontSignal",
     setAnteriorDistance, -DEFAULT_ANTERIOR, function (num) {
         return convertToMeters(num);
@@ -198,14 +204,6 @@ var headRollProperty = new AppProperty("#headRoll-slider", "slider", "onHeadRoll
 var propArray = new Array(frontBaseProperty, backBaseProperty, lateralBaseProperty, headAngularVelocityProperty,
     heightDifferenceProperty, handsVelocityProperty, handsAngularVelocityProperty, headVelocityProperty, headPitchProperty,
     headRollProperty);
-
-propArray.forEach(function (prop) {
-    print(prop.name);
-});
-
-checkBoxArray.forEach(function (cb) {
-    print(cb.id);
-});
 
 // var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
 var HTML_URL = Script.resolvePath("file:///c:/dev/high fidelity/hifi/scripts/developer/stepAppExtra.html");
