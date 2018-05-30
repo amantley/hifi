@@ -582,6 +582,7 @@ void Rig::calcAnimAlpha(float speed, const std::vector<float>& referenceSpeeds, 
     // calculate alpha from linear combination of referenceSpeeds.
     float alpha = 0.0f;
     if (speed <= referenceSpeeds.front()) {
+        qCDebug(animation) << "the current speed is " << speed;
         alpha = 0.0f;
     } else if (speed > referenceSpeeds.back()) {
         alpha = (float)(referenceSpeeds.size() - 1);
