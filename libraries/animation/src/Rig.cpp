@@ -578,11 +578,9 @@ bool Rig::getAbsoluteJointPoseInRigFrame(int jointIndex, AnimPose& returnPose) c
 void Rig::calcAnimAlpha(float speed, const std::vector<float>& referenceSpeeds, float* alphaOut) const {
 
     ASSERT(referenceSpeeds.size() > 0);
-
     // calculate alpha from linear combination of referenceSpeeds.
     float alpha = 0.0f;
     if (speed <= referenceSpeeds.front()) {
-        qCDebug(animation) << "the current speed is " << speed;
         alpha = 0.0f;
     } else if (speed > referenceSpeeds.back()) {
         alpha = (float)(referenceSpeeds.size() - 1);
@@ -681,7 +679,7 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
         _animVars.set("moveLateralAlpha", moveLateralAlpha);
 
         const float MOVE_ENTER_SPEED_THRESHOLD = 0.2f; // m/sec
-        const float MOVE_EXIT_SPEED_THRESHOLD = 0.07f;  // m/sec
+        const float MOVE_EXIT_SPEED_THRESHOLD = 0.03f;  // m/sec
         const float TURN_ENTER_SPEED_THRESHOLD = 0.5f; // rad/sec
         const float TURN_EXIT_SPEED_THRESHOLD = 0.2f; // rad/sec
 
@@ -717,6 +715,7 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
 
             if (glm::length(localVel) > moveThresh) {
                 if (_desiredState != RigRole::Move) {
+                    qCWarning(animation) << "getting ready to move in compute motion animation state";
                     _desiredStateAge = 0.0f;
                 }
                 _desiredState = RigRole::Move;
@@ -728,6 +727,7 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
                     _desiredState = RigRole::Turn;
                 } else { // idle
                     if (_desiredState != RigRole::Idle) {
+                        qCWarning(animation) << "getting ready to idle in compute motion animation state";
                         _desiredStateAge = 0.0f;
                     }
                     _desiredState = RigRole::Idle;
@@ -746,6 +746,13 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _desiredStateAge = STATE_CHANGE_HYSTERESIS_TIMER;
         }
 
+        // test: if stepping right with no hysteresis, how does this look.  left should have hysteresis
+        if ((_desiredState == RigRole::Move) && _state == RigRole::Idle) { // && (fabsf(lateralSpeed) > 0.0f) && !(fabsf(forwardSpeed) > 0.5f * fabsf(lateralSpeed))) {
+            qCWarning(animation) << "going from idle to move in compute motion animation state";
+            _state = _desiredState;
+            _desiredStateAge = 0.0f;
+        }
+        
         if ((_desiredStateAge >= STATE_CHANGE_HYSTERESIS_TIMER) && _desiredState != _state) {
             _state = _desiredState;
             _desiredStateAge = 0.0f;

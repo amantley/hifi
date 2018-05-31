@@ -25,23 +25,22 @@ var DEFAULT_LEVEL_PITCH = 7;
 var DEFAULT_LEVEL_ROLL = 7;
 var DEFAULT_DIFF = 0.0;
 var DEFAULT_DIFF_EULERS = { x: 0.0, y: 0.0, z: 0.0 };
-var DEFAULT_HIPS_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
-var DEFAULT_HEAD_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
-var DEFAULT_TORSO_LENGTH = Vec3.length(Vec3.subtract(DEFAULT_HEAD_POSITION, DEFAULT_HIPS_POSITION));
+var DEFAULT_HIPS_POSITION;
+var DEFAULT_HEAD_POSITION; 
+var DEFAULT_TORSO_LENGTH; 
 var SPINE_STRETCH_LIMIT = 0.07;
 
 var VELOCITY_EPSILON = 0.02;
 var AVERAGING_RATE = 0.03;
 var HEIGHT_AVERAGING_RATE = 0.01;
-var STEP_TIME_SECS = 0.6;
+var STEP_TIME_SECS = 0.2;
 var MODE_SAMPLE_LENGTH = 100;
 var RESET_MODE = false;
 var HEAD_TURN_THRESHOLD = 25.0;
 var NO_SHARED_DIRECTION = -0.98;
 var LOADING_DELAY = 500;
+var FAILSAFE_TIMEOUT = 2.5;
 
-
-var initApp = true;
 var debugDrawBase = true;
 var activated = false;
 var documentLoaded = false;
@@ -209,7 +208,7 @@ var propArray = new Array(frontBaseProperty, backBaseProperty, lateralBaseProper
     headRollProperty);
 
 // var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepApp.html");
-var HTML_URL = Script.resolvePath("file:///c:/dev/hifi_fork/hifi/scripts/developer/stepAppExtra.html");
+var HTML_URL = Script.resolvePath("http://hifi-content.s3.amazonaws.com/angus/stepApp/stepAppExtra.html");
 var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
 
 function manageClick() {
@@ -264,31 +263,36 @@ function onWebEventReceived(msg) {
             // break;
         }
     });
+    if (message.type === "onCreateStepApp") {
+        print("document loaded");
+        documentLoaded = true;
+        Script.setTimeout(initAppForm, LOADING_DELAY);
+    }
 }
 
 function initAppForm() {
     print("step app is loaded: " + documentLoaded);
-    initApp = true;
-    propArray.forEach(function (prop) {
-        tablet.emitScriptEvent(JSON.stringify({
-            "type": "trigger",
-            "id": prop.signalType,
-            "data": { "value": "green" }
-        }));
-        tablet.emitScriptEvent(JSON.stringify({
-            "type": "slider",
-            "id": prop.name,
-            "data": { "value": prop.convertToSlider(prop.value) }
-        }));
-    });
-    checkBoxArray.forEach(function(cbox) {
-        tablet.emitScriptEvent(JSON.stringify({
-            "type": "checkboxtick",
-            "id": cbox.id,
-            "data": { "value": cbox.data.value }
-        }));
-    });
- 
+    if (documentLoaded === true) {
+        propArray.forEach(function (prop) {
+            tablet.emitScriptEvent(JSON.stringify({
+                "type": "trigger",
+                "id": prop.signalType,
+                "data": { "value": "green" }
+            }));
+            tablet.emitScriptEvent(JSON.stringify({
+                "type": "slider",
+                "id": prop.name,
+                "data": { "value": prop.convertToSlider(prop.value) }
+            }));
+        });
+        checkBoxArray.forEach(function (cbox) {
+            tablet.emitScriptEvent(JSON.stringify({
+                "type": "checkboxtick",
+                "id": cbox.id,
+                "data": { "value": cbox.data.value }
+            }));
+        });
+    }
 }
 
 function updateSignalColors() {
@@ -305,7 +309,6 @@ function updateSignalColors() {
     isHeadLevel(currentStateReadings.diffFromAverageEulers);
 
     propArray.forEach(function (prop) {
-        // print(prop.name);
         if (prop.signalOn) {
             tablet.emitScriptEvent(JSON.stringify({ "type": "trigger", "id": prop.signalType, "data": { "value": "green" } }));
         } else {
@@ -322,13 +325,14 @@ function onScreenChanged(type, url) {
             tablet.webEventReceived.connect(onWebEventReceived);
             print("after connect web event");
             MyAvatar.hmdLeanRecenterEnabled = false;
-            Script.setTimeout(initAppForm, LOADING_DELAY);
+            
         }
         activated = true;
     } else {
         if (activated) {
             // disconnect from event bridge
             tablet.webEventReceived.disconnect(onWebEventReceived);
+            documentLoaded = false;
         }
         activated = false;
     }
@@ -539,6 +543,7 @@ function update(dt) {
     // back length
     var headMinusHipLean = Vec3.subtract(currentStateReadings.headPose.translation, DEFAULT_HIPS_POSITION);
     currentStateReadings.backLength = Vec3.length(headMinusHipLean);
+    // print("back length and default " + currentStateReadings.backLength + " " + DEFAULT_TORSO_LENGTH);
 
     // mode height
     addToModeArray(modeArray, currentStateReadings.headPose.translation.y);
@@ -604,7 +609,7 @@ function update(dt) {
         headLowerThanHeightAverage(currentStateReadings.diffFromAverageHeight) &&
         isHeadLevel(currentStateReadings.diffFromAverageEulers)) {
 
-        if (stepTimer < 0.0) {
+        if (stepTimer < 0.0) { //!MyAvatar.isRecenteringHorizontally()
             print("trigger recenter========================================================");
             MyAvatar.triggerHorizontalRecenter();
             stepTimer = STEP_TIME_SECS;
@@ -614,12 +619,9 @@ function update(dt) {
         // do the failsafe recenter.
         // failsafeFlag stops repeated setting of failsafe button color.
         // RESET_MODE false forces a reset of the height
-        print("torso printout" + DEFAULT_TORSO_LENGTH + " " + currentStateReadings.backLength);
         RESET_MODE = false;
         failsafeFlag = true;
-        var failsafeTimeout = 2.5;
-        failsafeSignalTimer = failsafeTimeout;
-        stepTimer = STEP_TIME_SECS;
+        failsafeSignalTimer = FAILSAFE_TIMEOUT;
         MyAvatar.triggerHorizontalRecenter();
         tablet.emitScriptEvent(JSON.stringify({ "type": "failsafe", "id": "failsafeSignal", "data": { "value": "green" } }));
         // in fail safe we debug print the values that were blocking us.
@@ -644,10 +646,6 @@ function update(dt) {
 
     if (!HMD.active) {
         RESET_MODE = false;
-        initApp = false;
-    }
-    if (HMD.active && !initApp) {
-        initAppForm();
     }
 
     if (Math.abs(headPoseAverageEulers.y) > HEAD_TURN_THRESHOLD) {
@@ -669,6 +667,12 @@ function shutdownTabletApp() {
 
 tabletButton.clicked.connect(manageClick);
 tablet.screenChanged.connect(onScreenChanged);
+
+Script.setTimeout(function() {
+    DEFAULT_HIPS_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Hips"));
+    DEFAULT_HEAD_POSITION = MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(MyAvatar.getJointIndex("Head"));
+    DEFAULT_TORSO_LENGTH = Vec3.length(Vec3.subtract(DEFAULT_HEAD_POSITION, DEFAULT_HIPS_POSITION));
+},(4*LOADING_DELAY));
 
 Script.update.connect(update);
 Controller.keyPressEvent.connect(onKeyPress);
