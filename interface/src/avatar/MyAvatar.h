@@ -86,6 +86,10 @@ class MyAvatar : public Avatar {
      * @property {number} audioListenerModeCamera=1 - The audio listening position is at the camera. <em>Read-only.</em>
      * @property {number} audioListenerModeCustom=2 - The audio listening position is at a the position specified by set by the 
      *     <code>customListenPosition</code> and <code>customListenOrientation</code> property values. <em>Read-only.</em>
+     * @property {boolean} hasScriptedBlendshapes=false - Blendshapes will be transmitted over the network if set to true.
+     * @property {boolean} hasProceduralBlinkFaceMovement=true - procedural blinking will be turned on if set to true.
+     * @property {boolean} hasProceduralEyeFaceMovement=true - procedural eye movement will be turned on if set to true.
+     * @property {boolean} hasAudioEnabledFaceMovement=true - If set to true, voice audio will move the mouth Blendshapes while MyAvatar.hasScriptedBlendshapes is enabled.
      * @property {Vec3} customListenPosition=Vec3.ZERO - The listening position used when the <code>audioListenerMode</code>
      *     property value is <code>audioListenerModeCustom</code>.
      * @property {Quat} customListenOrientation=Quat.IDENTITY - The listening orientation used when the 
@@ -124,7 +128,7 @@ class MyAvatar : public Avatar {
      *     while flying.
      * @property {number} hmdRollControlDeadZone=8 - The amount of HMD roll, in degrees, required before your avatar turns if 
      *    <code>hmdRollControlEnabled</code> is enabled.
-     * @property hmdRollControlRate {number} If hmdRollControlEnabled is true, this value determines the maximum turn rate of
+     * @property {number} hmdRollControlRate If hmdRollControlEnabled is true, this value determines the maximum turn rate of
      *     your avatar when rolling your HMD in degrees per second.
      * @property {number} userHeight=1.75 - The height of the user in sensor space.
      * @property {number} userEyeHeight=1.65 - The estimated height of the user's eyes in sensor space. <em>Read-only.</em>
@@ -187,6 +191,10 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(AudioListenerMode audioListenerModeHead READ getAudioListenerModeHead)
     Q_PROPERTY(AudioListenerMode audioListenerModeCamera READ getAudioListenerModeCamera)
     Q_PROPERTY(AudioListenerMode audioListenerModeCustom READ getAudioListenerModeCustom)
+    Q_PROPERTY(bool hasScriptedBlendshapes READ getHasScriptedBlendshapes WRITE setHasScriptedBlendshapes)
+    Q_PROPERTY(bool hasProceduralBlinkFaceMovement READ getHasProceduralBlinkFaceMovement WRITE setHasProceduralBlinkFaceMovement)
+    Q_PROPERTY(bool hasProceduralEyeFaceMovement READ getHasProceduralEyeFaceMovement WRITE setHasProceduralEyeFaceMovement)
+    Q_PROPERTY(bool hasAudioEnabledFaceMovement READ getHasAudioEnabledFaceMovement WRITE setHasAudioEnabledFaceMovement)
     //TODO: make gravity feature work Q_PROPERTY(glm::vec3 gravity READ getGravity WRITE setGravity)
 
     Q_PROPERTY(glm::vec3 leftHandPosition READ getLeftHandPosition)
@@ -468,7 +476,7 @@ public:
     Q_INVOKABLE bool getClearOverlayWhenMoving() const { return _clearOverlayWhenMoving; }
     /**jsdoc
      * @function MyAvatar.setClearOverlayWhenMoving
-     * @returns {boolean} 
+     * @param {boolean} on
      */
     Q_INVOKABLE void setClearOverlayWhenMoving(bool on) { _clearOverlayWhenMoving = on; }
 
@@ -978,14 +986,14 @@ public:
 
 
     // derive avatar body position and orientation from the current HMD Sensor location.
-    // results are in HMD frame
+    // results are in sensor frame (-z forward)
     glm::mat4 deriveBodyFromHMDSensor() const;
 
     glm::vec3 computeCounterBalance() const;
 
     // derive avatar body position and orientation from using the current HMD Sensor location in relation to the previous
     // location of the base of support of the avatar.
-    // results are in Sensor frame
+    // results are in sensor frame (-z foward)
     glm::mat4 deriveBodyUsingCgModel() const;
 
     /**jsdoc
@@ -1014,6 +1022,8 @@ public:
     float getWalkSpeed() const;
 
     QVector<QString> getScriptUrls();
+
+    bool isReadyForPhysics() const;
 
 public slots:
 
@@ -1196,7 +1206,7 @@ public slots:
      * @function MyAvatar.getEnableMeshVisible
      * @returns {boolean} <code>true</code> if your avatar's mesh is visible, otherwise <code>false</code>.
      */
-    bool getEnableMeshVisible() const { return _skeletonModel->isVisible(); }
+    bool getEnableMeshVisible() const override;
 
     /**jsdoc
      * Set whether or not your avatar mesh is visible.
@@ -1208,7 +1218,7 @@ public slots:
      *     MyAvatar.setEnableMeshVisible(true);
      * }, 10000);
      */
-    void setEnableMeshVisible(bool isEnabled);
+    virtual void setEnableMeshVisible(bool isEnabled) override;
 
     /**jsdoc
      * @function MyAvatar.setEnableInverseKinematics
@@ -1378,6 +1388,14 @@ private:
     virtual bool shouldRenderHead(const RenderArgs* renderArgs) const override;
     void setShouldRenderLocally(bool shouldRender) { _shouldRender = shouldRender; setEnableMeshVisible(shouldRender); }
     bool getShouldRenderLocally() const { return _shouldRender; }
+    void setHasScriptedBlendshapes(bool hasScriptedBlendshapes);
+    bool getHasScriptedBlendshapes() const override { return _hasScriptedBlendShapes; }
+    void setHasProceduralBlinkFaceMovement(bool hasProceduralBlinkFaceMovement);
+    bool getHasProceduralBlinkFaceMovement() const override { return _headData->getHasProceduralBlinkFaceMovement(); }
+    void setHasProceduralEyeFaceMovement(bool hasProceduralEyeFaceMovement);
+    bool getHasProceduralEyeFaceMovement() const override { return _headData->getHasProceduralEyeFaceMovement(); }
+    void setHasAudioEnabledFaceMovement(bool hasAudioEnabledFaceMovement);
+    bool getHasAudioEnabledFaceMovement() const override { return _headData->getHasAudioEnabledFaceMovement(); }
     bool isMyAvatar() const override { return true; }
     virtual int parseDataFromBuffer(const QByteArray& buffer) override;
     virtual glm::vec3 getSkeletonPosition() const override;
@@ -1439,7 +1457,7 @@ private:
     SharedSoundPointer _collisionSound;
 
     MyCharacterController _characterController;
-    int16_t _previousCollisionGroup { BULLET_COLLISION_GROUP_MY_AVATAR };
+    int32_t _previousCollisionGroup { BULLET_COLLISION_GROUP_MY_AVATAR };
 
     AvatarWeakPointer _lookAtTargetAvatar;
     glm::vec3 _targetAvatarPosition;
@@ -1486,6 +1504,7 @@ private:
     bool _hmdRollControlEnabled { true };
     float _hmdRollControlDeadZone { ROLL_CONTROL_DEAD_ZONE_DEFAULT };
     float _hmdRollControlRate { ROLL_CONTROL_RATE_DEFAULT };
+    std::atomic<bool> _hasScriptedBlendShapes { false };
 
     // working copy -- see AvatarData for thread-safe _sensorToWorldMatrixCache, used for outward facing access
     glm::mat4 _sensorToWorldMatrix { glm::mat4() };
@@ -1495,8 +1514,8 @@ private:
     glm::quat _hmdSensorOrientation;
     glm::vec3 _hmdSensorPosition;
     // cache head controller pose in sensor space
-    glm::vec2 _headControllerFacing;  // facing vector in xz plane
-    glm::vec2 _headControllerFacingMovingAverage { 0, 0 };   // facing vector in xz plane
+    glm::vec2 _headControllerFacing;  // facing vector in xz plane (sensor space)
+    glm::vec2 _headControllerFacingMovingAverage { 0.0f, 0.0f };   // facing vector in xz plane (sensor space)
 
     // cache of the current body position and orientation of the avatar's body,
     // in sensor space.
@@ -1610,6 +1629,8 @@ private:
 
     // load avatar scripts once when rig is ready
     bool _shouldLoadScripts { false };
+
+    bool _haveReceivedHeightLimitsFromDomain = { false };
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);

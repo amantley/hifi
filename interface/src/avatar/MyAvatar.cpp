@@ -68,8 +68,8 @@ using namespace std;
 
 const float DEFAULT_REAL_WORLD_FIELD_OF_VIEW_DEGREES = 30.0f;
 
-const float YAW_SPEED_DEFAULT = 75.0f;   // degrees/sec
-const float PITCH_SPEED_DEFAULT = 50.0f; // degrees/sec
+const float YAW_SPEED_DEFAULT = 100.0f;   // degrees/sec
+const float PITCH_SPEED_DEFAULT = 75.0f; // degrees/sec
 
 const float MAX_BOOST_SPEED = 0.5f * DEFAULT_AVATAR_MAX_WALKING_SPEED; // action motor gets additive boost below this speed
 const float MIN_AVATAR_SPEED = 0.05f;
@@ -423,12 +423,12 @@ void MyAvatar::update(float deltaTime) {
     }
 
 #ifdef DEBUG_DRAW_HMD_MOVING_AVERAGE
-    glm::vec3 p = transformPoint(getSensorToWorldMatrix(), getControllerPoseInAvatarFrame(controller::Pose::HEAD) *
-                                 glm::vec3(_headControllerFacingMovingAverage.x, 0.0f, _headControllerFacingMovingAverage.y));
-    DebugDraw::getInstance().addMarker("facing-avg", getOrientation(), p, glm::vec4(1.0f));
-    p = transformPoint(getSensorToWorldMatrix(), getHMDSensorPosition() +
-                       glm::vec3(_headControllerFacing.x, 0.0f, _headControllerFacing.y));
-    DebugDraw::getInstance().addMarker("facing", getOrientation(), p, glm::vec4(1.0f));
+    auto sensorHeadPose = getControllerPoseInSensorFrame(controller::Action::HEAD);
+    glm::vec3 worldHeadPos = transformPoint(getSensorToWorldMatrix(), sensorHeadPose.getTranslation());
+    glm::vec3 worldFacingAverage = transformVectorFast(getSensorToWorldMatrix(), glm::vec3(_headControllerFacingMovingAverage.x, 0.0f, _headControllerFacingMovingAverage.y));
+    glm::vec3 worldFacing = transformVectorFast(getSensorToWorldMatrix(), glm::vec3(_headControllerFacing.x, 0.0f, _headControllerFacing.y));
+    DebugDraw::getInstance().drawRay(worldHeadPos, worldHeadPos + worldFacing, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+    DebugDraw::getInstance().drawRay(worldHeadPos, worldHeadPos + worldFacingAverage, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
 #endif
 
     if (_goToPending) {
@@ -655,8 +655,8 @@ void MyAvatar::simulate(float deltaTime) {
                     if (success) {
                         moveOperator.addEntityToMoveList(entity, newCube);
                     }
-                    // send an edit packet to update the entity-server about the queryAABox.  If it's an
-                    // avatar-entity, don't.
+                    // send an edit packet to update the entity-server about the queryAABox
+                    // unless it is client-only
                     if (packetSender && !entity->getClientOnly()) {
                         EntityItemProperties properties = entity->getProperties();
                         properties.setQueryAACubeDirty();
@@ -664,6 +664,17 @@ void MyAvatar::simulate(float deltaTime) {
 
                         packetSender->queueEditEntityMessage(PacketType::EntityEdit, entityTree, entity->getID(), properties);
                         entity->setLastBroadcast(usecTimestampNow());
+
+                        entity->forEachDescendant([&](SpatiallyNestablePointer descendant) {
+                            EntityItemPointer entityDescendant = std::static_pointer_cast<EntityItem>(descendant);
+                            if (!entityDescendant->getClientOnly() && descendant->updateQueryAACube()) {
+                                EntityItemProperties descendantProperties;
+                                descendantProperties.setQueryAACube(descendant->getQueryAACube());
+                                descendantProperties.setLastEdited(now);
+                                packetSender->queueEditEntityMessage(PacketType::EntityEdit, entityTree, entityDescendant->getID(), descendantProperties);
+                                entityDescendant->setLastBroadcast(now); // for debug/physics status icons
+                            }
+                        });
                     }
                 }
             });
@@ -702,7 +713,8 @@ void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
     _hmdSensorOrientation = glmExtractRotation(hmdSensorMatrix);
     auto headPose = getControllerPoseInSensorFrame(controller::Action::HEAD);
     if (headPose.isValid()) {
-        _headControllerFacing = getFacingDir2D(headPose.rotation);
+        glm::quat bodyOrientation = computeBodyFacingFromHead(headPose.rotation, Vectors::UNIT_Y);
+        _headControllerFacing = getFacingDir2D(bodyOrientation);
     } else {
         _headControllerFacing = glm::vec2(1.0f, 0.0f);
     }
@@ -1144,7 +1156,11 @@ void MyAvatar::setEnableDebugDrawIKChains(bool isEnabled) {
 }
 
 void MyAvatar::setEnableMeshVisible(bool isEnabled) {
-    _skeletonModel->setVisibleInScene(isEnabled, qApp->getMain3DScene(), render::ItemKey::TAG_BITS_NONE, true);
+    return Avatar::setEnableMeshVisible(isEnabled);
+}
+
+bool MyAvatar::getEnableMeshVisible() const {
+    return Avatar::getEnableMeshVisible();
 }
 
 void MyAvatar::setEnableInverseKinematics(bool isEnabled) {
@@ -1498,7 +1514,10 @@ void MyAvatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
     _skeletonModelChangeCount++;
     int skeletonModelChangeCount = _skeletonModelChangeCount;
     Avatar::setSkeletonModelURL(skeletonModelURL);
-    _skeletonModel->setVisibleInScene(true, qApp->getMain3DScene(), render::ItemKey::TAG_BITS_NONE, true);
+    _skeletonModel->setTagMask(render::hifi::TAG_NONE);
+    _skeletonModel->setGroupCulled(true);
+    _skeletonModel->setVisibleInScene(true, qApp->getMain3DScene());
+
     _headBoneSet.clear();
     _cauterizationNeedsUpdate = true;
 
@@ -2073,14 +2092,12 @@ void MyAvatar::preDisplaySide(const RenderArgs* renderArgs) {
                 _attachmentData[i].jointName.compare("RightEye", Qt::CaseInsensitive) == 0 ||
                 _attachmentData[i].jointName.compare("HeadTop_End", Qt::CaseInsensitive) == 0 ||
                 _attachmentData[i].jointName.compare("Face", Qt::CaseInsensitive) == 0) {
-                uint8_t modelRenderTagBits = shouldDrawHead ? render::ItemKey::TAG_BITS_0 : render::ItemKey::TAG_BITS_NONE;
-                modelRenderTagBits |= render::ItemKey::TAG_BITS_1;
-                _attachmentModels[i]->setVisibleInScene(true, qApp->getMain3DScene(),
-                                                        modelRenderTagBits, false);
+                uint8_t modelRenderTagBits = shouldDrawHead ? render::hifi::TAG_ALL_VIEWS : render::hifi::TAG_SECONDARY_VIEW;
 
-                uint8_t castShadowRenderTagBits = render::ItemKey::TAG_BITS_0 | render::ItemKey::TAG_BITS_1;
-                _attachmentModels[i]->setCanCastShadow(true, qApp->getMain3DScene(),
-                                                       castShadowRenderTagBits, false);
+                _attachmentModels[i]->setTagMask(modelRenderTagBits);
+                _attachmentModels[i]->setGroupCulled(false);
+                _attachmentModels[i]->setCanCastShadow(true);
+                _attachmentModels[i]->setVisibleInScene(true, qApp->getMain3DScene());
             }
         }
     }
@@ -2098,6 +2115,31 @@ bool MyAvatar::shouldRenderHead(const RenderArgs* renderArgs) const {
     bool firstPerson = qApp->getCamera().getMode() == CAMERA_MODE_FIRST_PERSON;
     bool insideHead = cameraInsideHead(renderArgs->getViewFrustum().getPosition());
     return !defaultMode || !firstPerson || !insideHead;
+}
+
+void MyAvatar::setHasScriptedBlendshapes(bool hasScriptedBlendshapes) {
+    if (hasScriptedBlendshapes == _hasScriptedBlendShapes) {
+        return;
+    }
+    if (!hasScriptedBlendshapes) {
+        // send a forced avatarData update to make sure the script can send neutal blendshapes on unload
+        // without having to wait for the update loop, make sure _hasScriptedBlendShapes is still true
+        // before sending the update, or else it won't send the neutal blendshapes to the receiving clients
+        sendAvatarDataPacket(true);
+    }
+    _hasScriptedBlendShapes = hasScriptedBlendshapes;
+}
+
+void MyAvatar::setHasProceduralBlinkFaceMovement(bool hasProceduralBlinkFaceMovement) {
+    _headData->setHasProceduralBlinkFaceMovement(hasProceduralBlinkFaceMovement);
+}
+
+void MyAvatar::setHasProceduralEyeFaceMovement(bool hasProceduralEyeFaceMovement) {
+    _headData->setHasProceduralEyeFaceMovement(hasProceduralEyeFaceMovement);
+}
+
+void MyAvatar::setHasAudioEnabledFaceMovement(bool hasAudioEnabledFaceMovement) {
+    _headData->setHasAudioEnabledFaceMovement(hasAudioEnabledFaceMovement);
 }
 
 void MyAvatar::updateOrientation(float deltaTime) {
@@ -2264,9 +2306,15 @@ void MyAvatar::updateActionMotor(float deltaTime) {
         _actionMotorVelocity = getSensorToWorldScale() * (_walkSpeed.get() * _walkSpeedScalar)  * direction;
     }
 
+    float previousBoomLength = _boomLength;
     float boomChange = getDriveKey(ZOOM);
-    _boomLength += 4.0f * _boomLength * boomChange + boomChange * boomChange;
+    _boomLength += 2.0f * _boomLength * boomChange + boomChange * boomChange;
     _boomLength = glm::clamp<float>(_boomLength, ZOOM_MIN, ZOOM_MAX);
+
+    // May need to change view if boom length has changed
+    if (previousBoomLength != _boomLength) {
+        qApp->changeViewAsNeeded(_boomLength);
+    }
 }
 
 void MyAvatar::updatePosition(float deltaTime) {
@@ -2407,10 +2455,15 @@ void MyAvatar::restrictScaleFromDomainSettings(const QJsonObject& domainSettings
     if (_domainMinimumHeight > _domainMaximumHeight) {
         std::swap(_domainMinimumHeight, _domainMaximumHeight);
     }
+
     // Set avatar current scale
     Settings settings;
     settings.beginGroup("Avatar");
     _targetScale = loadSetting(settings, "scale", 1.0f);
+
+    // clamp the desired _targetScale by the domain limits NOW, don't try to gracefully animate.  Because
+    // this might cause our avatar to become embedded in the terrain.
+    _targetScale = getDomainLimitedScale();
 
     qCDebug(interfaceapp) << "This domain requires a minimum avatar scale of " << _domainMinimumHeight
                           << " and a maximum avatar scale of " << _domainMaximumHeight;
@@ -2420,6 +2473,8 @@ void MyAvatar::restrictScaleFromDomainSettings(const QJsonObject& domainSettings
     setModelScale(_targetScale);
     rebuildCollisionShape();
     settings.endGroup();
+
+    _haveReceivedHeightLimitsFromDomain = true;
 }
 
 void MyAvatar::leaveDomain() {
@@ -2437,6 +2492,7 @@ void MyAvatar::saveAvatarScale() {
 void MyAvatar::clearScaleRestriction() {
     _domainMinimumHeight = MIN_AVATAR_HEIGHT;
     _domainMaximumHeight = MAX_AVATAR_HEIGHT;
+    _haveReceivedHeightLimitsFromDomain = false;
 }
 
 void MyAvatar::goToLocation(const QVariant& propertiesVar) {
@@ -2554,8 +2610,12 @@ bool MyAvatar::safeLanding(const glm::vec3& position) {
 
 // If position is not reliably safe from being stuck by physics, answer true and place a candidate better position in betterPositionOut.
 bool MyAvatar::requiresSafeLanding(const glm::vec3& positionIn, glm::vec3& betterPositionOut) {
+
     // We begin with utilities and tests. The Algorithm in four parts is below.
-    auto halfHeight = _characterController.getCapsuleHalfHeight() + _characterController.getCapsuleRadius();
+    // NOTE: we use estimated avatar height here instead of the bullet capsule halfHeight, because
+    // the domain avatar height limiting might not have taken effect yet on the actual bullet shape.
+    auto halfHeight = 0.5f * getHeight();
+
     if (halfHeight == 0) {
         return false; // zero height avatar
     }
@@ -2564,14 +2624,13 @@ bool MyAvatar::requiresSafeLanding(const glm::vec3& positionIn, glm::vec3& bette
         return false; // no entity tree
     }
     // More utilities.
-    const auto offset = getWorldOrientation() *_characterController.getCapsuleLocalOffset();
-    const auto capsuleCenter = positionIn + offset;
+    const auto capsuleCenter = positionIn;
     const auto up = _worldUpDirection, down = -up;
     glm::vec3 upperIntersection, upperNormal, lowerIntersection, lowerNormal;
     EntityItemID upperId, lowerId;
     QVector<EntityItemID> include{}, ignore{};
     auto mustMove = [&] {  // Place bottom of capsule at the upperIntersection, and check again based on the capsule center.
-        betterPositionOut = upperIntersection + (up * halfHeight) - offset;
+        betterPositionOut = upperIntersection + (up * halfHeight);
         return true;
     };
     auto findIntersection = [&](const glm::vec3& startPointIn, const glm::vec3& directionIn, glm::vec3& intersectionOut, EntityItemID& entityIdOut, glm::vec3& normalOut) {
@@ -2591,7 +2650,7 @@ bool MyAvatar::requiresSafeLanding(const glm::vec3& positionIn, glm::vec3& bette
         EntityItemID entityID = entityTree->findRayIntersection(startPointIn, directionIn, include, ignore, visibleOnly, collidableOnly, precisionPicking,
             element, distance, face, normalOut, extraInfo, lockType, accurateResult);
         if (entityID.isNull()) {
-             return false;
+            return false;
         }
         intersectionOut = startPointIn + (directionIn * distance);
         entityIdOut = entityID;
@@ -2617,7 +2676,7 @@ bool MyAvatar::requiresSafeLanding(const glm::vec3& positionIn, glm::vec3& bette
     // I.e., we are in a clearing between two objects.
     if (isDown(upperNormal) && isUp(lowerNormal)) {
         auto spaceBetween = glm::distance(upperIntersection, lowerIntersection);
-        const float halfHeightFactor = 2.5f; // Until case 5003 is fixed (and maybe after?), we need a fudge factor. Also account for content modelers not being precise.
+        const float halfHeightFactor = 2.25f; // Until case 5003 is fixed (and maybe after?), we need a fudge factor. Also account for content modelers not being precise.
         if (spaceBetween > (halfHeightFactor * halfHeight)) {
             // There is room for us to fit in that clearing. If there wasn't, physics would oscilate us between the objects above and below.
             // We're now going to iterate upwards through successive upperIntersections, testing to see if we're contained within the top surface of some entity.
@@ -2673,7 +2732,6 @@ void MyAvatar::updateMotionBehaviorFromMenu() {
     } else {
         _motionBehaviors &= ~AVATAR_MOTION_SCRIPTED_MOTOR_ENABLED;
     }
-    setCollisionsEnabled(menu->isOptionChecked(MenuOption::EnableAvatarCollisions));
     setProperty("lookAtSnappingEnabled", menu->isOptionChecked(MenuOption::EnableLookAtSnapping));
 }
 
@@ -2817,6 +2875,7 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     auto headPose = getControllerPoseInSensorFrame(controller::Action::HEAD);
     if (headPose.isValid()) {
         headPosition = headPose.translation;
+        // AJT: TODO: can remove this Y_180
         headOrientation = headPose.rotation * Quaternions::Y_180;
     }
     const glm::quat headOrientationYawOnly = cancelOutRollAndPitch(headOrientation);
@@ -2839,6 +2898,8 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     // eyeToNeck offset is relative full HMD orientation.
     // while neckToRoot offset is only relative to HMDs yaw.
     // Y_180 is necessary because rig is z forward and hmdOrientation is -z forward
+
+    // AJT: TODO: can remove this Y_180, if we remove the higher level one.
     glm::vec3 headToNeck = headOrientation * Quaternions::Y_180 * (localNeck - localHead);
     glm::vec3 neckToRoot = headOrientationYawOnly  * Quaternions::Y_180 * -localNeck;
 
@@ -2975,9 +3036,11 @@ glm::vec3 MyAvatar::computeCounterBalance() const {
 // headOrientation, headPosition and hipsPosition are in avatar space
 // returns the matrix of the hips in Avatar space
 static glm::mat4 computeNewHipsMatrix(glm::quat headOrientation, glm::vec3 headPosition, glm::vec3 hipsPosition) {
-    glm::quat headOrientationYawOnly = cancelOutRollAndPitch(headOrientation);
-    const float MIX_RATIO = 0.5f;
-    glm::quat hipsRot = safeLerp(Quaternions::IDENTITY, headOrientationYawOnly, MIX_RATIO);
+
+    glm::quat bodyOrientation = computeBodyFacingFromHead(headOrientation, Vectors::UNIT_Y);
+
+    const float MIX_RATIO = 0.3f;
+    glm::quat hipsRot = safeLerp(Quaternions::IDENTITY, bodyOrientation, MIX_RATIO);
     glm::vec3 hipsFacing = hipsRot * Vectors::UNIT_Z;
 
     glm::vec3 spineVec = headPosition - hipsPosition;
@@ -3011,39 +3074,16 @@ static void drawBaseOfSupport(float baseOfSupportScale, float footLocal, glm::ma
     DebugDraw::getInstance().drawRay(frontLeft, frontRight, rayColor);
 }
 
-// cancel out roll and pitch test fix
-glm::quat cancelOutRollAndPitch2(const glm::quat& q) {
-    glm::vec3 zAxis = q * glm::vec3(0.0f, 0.0f, 1.0f);
-    glm::vec3 newZ;
-    glm::vec3 newX;
-    glm::vec3 newY;
-    // cancel out the roll and pitch
-    if (zAxis.x == 0 && zAxis.z == 0.0f) {
-        if (fabs(zAxis.y) > 0.0) {
-            // new z is the up axis, that is the direction the body is pointing
-            newZ = glm::normalize(q * glm::vec3(0.0f, 1.0f, 0.0f));
-        }
-        newX = glm::cross(vec3(0.0f, 1.0f, 0.0f), newZ);
-        newY = glm::cross(newZ, newX);
-    } else {
-        newZ = glm::normalize(vec3(zAxis.x, 0.0f, zAxis.z));
-        newX = glm::cross(vec3(0.0f, 1.0f, 0.0f), newZ);
-        newY = glm::cross(newZ, newX);
-    }
-    glm::mat4 temp(glm::vec4(newX, 0.0f), glm::vec4(newY, 0.0f), glm::vec4(newZ, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-    return glm::quat_cast(temp);
-}
-
 // this function finds the hips position using a center of gravity model that
 // balances the head and hands with the hips over the base of support
-// returns the rotation and position of the Avatar in Sensor space
+// returns the rotation (-z forward) and position of the Avatar in Sensor space
 glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::mat4 sensorToWorldMat = getSensorToWorldMatrix();
     glm::mat4 worldToSensorMat = glm::inverse(sensorToWorldMat);
     auto headPose = getControllerPoseInSensorFrame(controller::Action::HEAD);
 
-    // the Y_180 is to flip the controller pose from -z forward to the head joint which is +z forward.
     glm::mat4 sensorHeadMat = createMatFromQuatAndPos(headPose.rotation * Quaternions::Y_180, headPose.translation);
+
     // convert into avatar space
     glm::mat4 avatarToWorldMat = getTransform().getMatrix();
     glm::mat4 avatarHeadMat = glm::inverse(avatarToWorldMat) * sensorToWorldMat * sensorHeadMat;
@@ -3061,6 +3101,7 @@ glm::mat4 MyAvatar::deriveBodyUsingCgModel() const {
     glm::mat4 avatarHipsMat = computeNewHipsMatrix(glmExtractRotation(avatarHeadMat), extractTranslation(avatarHeadMat), cgHipsPosition);
 
     // convert hips from avatar to sensor space
+    // The Y_180 is to convert from z forward to -z forward.
     return worldToSensorMat * avatarToWorldMat * avatarHipsMat;
 }
 
@@ -3083,6 +3124,10 @@ float MyAvatar::getUserEyeHeight() const {
 
 float MyAvatar::getWalkSpeed() const {
     return _walkSpeed.get() * _walkSpeedScalar;
+}
+
+bool MyAvatar::isReadyForPhysics() const {
+    return qApp->isServerlessMode() || _haveReceivedHeightLimitsFromDomain;
 }
 
 void MyAvatar::setSprintMode(bool sprint) {
@@ -3228,9 +3273,7 @@ void MyAvatar::FollowHelper::decrementTimeRemaining(float dt) {
 bool MyAvatar::FollowHelper::shouldActivateRotation(const MyAvatar& myAvatar, const glm::mat4& desiredBodyMatrix, const glm::mat4& currentBodyMatrix) const {
     const float FOLLOW_ROTATION_THRESHOLD = cosf(PI / 6.0f); // 30 degrees
     glm::vec2 bodyFacing = getFacingDir2D(currentBodyMatrix);
-    
     return glm::dot(-myAvatar.getHeadControllerFacingMovingAverage(), bodyFacing) < FOLLOW_ROTATION_THRESHOLD;
-    
 }
 
 bool MyAvatar::FollowHelper::shouldActivateHorizontal(const MyAvatar& myAvatar, const glm::mat4& desiredBodyMatrix, const glm::mat4& currentBodyMatrix) const {
