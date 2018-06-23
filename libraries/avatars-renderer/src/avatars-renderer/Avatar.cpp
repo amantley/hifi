@@ -34,6 +34,9 @@
 #include <render/TransitionStage.h>
 #include "ModelEntityItem.h"
 #include "RenderableModelEntityItem.h"
+#include "../../interface/src/Application.h"
+//#include "../../interface/src/ui/overlays/Overlays.h"
+//#include "../../interface/src/ui/overlays/Sphere3DOverlay.h"
 
 #include <graphics-scripting/Forward.h>
 
@@ -1336,6 +1339,7 @@ void Avatar::scaleVectorRelativeToPosition(glm::vec3 &positionToScale) const {
 }
 
 void Avatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
+    qCWarning(avatars_renderer) << "set the url -------+++++++++++++++++++++++++++++";
     AvatarData::setSkeletonModelURL(skeletonModelURL);
     if (QThread::currentThread() == thread()) {
         _skeletonModel->setURL(_skeletonModelURL);
@@ -1349,8 +1353,16 @@ void Avatar::setModelURLFinished(bool success) {
 
     _isAnimatingScale = true;
     _reconstructSoftEntitiesJointMap = true;
+    //qCWarning(avatars_renderer) << "success " << success << " model " << _skeletonModelURL;
+    //qCWarning(avatars_renderer) << "name " << AvatarData::getName();
+    //!success &&
+    //const QUrl temp = AvatarData::defaultFullAvatarModelUrl();
+    if ( _skeletonModelURL != AvatarData::defaultFullAvatarModelUrl()) {
+        
+        // this is where I think the blue orb should be created if we are not loaded yet
+        // AA
+        qCWarning(avatars_renderer) << "add the purple orb ************************";
 
-    if (!success && _skeletonModelURL != AvatarData::defaultFullAvatarModelUrl()) {
         const int MAX_SKELETON_DOWNLOAD_ATTEMPTS = 4; // NOTE: we don't want to be as generous as ResourceCache is, we only want 4 attempts
         if (_skeletonModel->getResourceDownloadAttemptsRemaining() <= 0 ||
             _skeletonModel->getResourceDownloadAttempts() > MAX_SKELETON_DOWNLOAD_ATTEMPTS) {
@@ -1358,13 +1370,36 @@ void Avatar::setModelURLFinished(bool success) {
                                     << "after" << _skeletonModel->getResourceDownloadAttempts() << "attempts.";
             // call _skeletonModel.setURL, but leave our copy of _skeletonModelURL alone.  This is so that
             // we don't redo this every time we receive an identity packet from the avatar with the bad url.
-            QMetaObject::invokeMethod(_skeletonModel.get(), "setURL",
-                Qt::QueuedConnection, Q_ARG(QUrl, AvatarData::defaultFullAvatarModelUrl()));
+            // QMetaObject::invokeMethod(_skeletonModel.get(), "setURL",
+            //    Qt::QueuedConnection, Q_ARG(QUrl, AvatarData::defaultFullAvatarModelUrl()));
         } else {
             qCWarning(avatars_renderer) << "Avatar model: " << _skeletonModelURL
                     << "failed to load... attempts:" << _skeletonModel->getResourceDownloadAttempts()
                     << "out of:" << MAX_SKELETON_DOWNLOAD_ATTEMPTS;
         }
+    } else {
+        
+        // Create the purple orb as a test
+        if (_purpleOrbMeshPlaceholderID == UNKNOWN_OVERLAY_ID || !qApp->getOverlays().isAddedOverlay(_purpleOrbMeshPlaceholderID)) {
+            _purpleOrbMeshPlaceholder = std::make_shared<Sphere3DOverlay>();
+            _purpleOrbMeshPlaceholder->setAlpha(1.0f);
+            _purpleOrbMeshPlaceholder->setColor({ 0xFF, 0x00, 0xFF });
+            _purpleOrbMeshPlaceholder->setIsSolid(false);
+            _purpleOrbMeshPlaceholder->setPulseMin(0.5);
+            _purpleOrbMeshPlaceholder->setPulseMax(1.0);
+            _purpleOrbMeshPlaceholder->setColorPulse(1.0);
+            _purpleOrbMeshPlaceholder->setIgnoreRayIntersection(true);
+            _purpleOrbMeshPlaceholder->setDrawInFront(false);
+            _purpleOrbMeshPlaceholderID = qApp->getOverlays().addOverlay(_purpleOrbMeshPlaceholder);
+        }
+
+        // Position focus
+        _purpleOrbMeshPlaceholder->setWorldOrientation(glm::quat(0.0f,0.0f,0.0f,1.0));
+        _purpleOrbMeshPlaceholder->setWorldPosition(glm::vec3(476.0f,500.0f,493.0f));
+        _purpleOrbMeshPlaceholder->setDimensions(glm::vec3(0.5f,0.5f,0.5f));
+        _purpleOrbMeshPlaceholder->setVisible(true);
+
+        qCWarning(avatars_renderer) << "remove the purple orb***************************";
     }
 }
 
