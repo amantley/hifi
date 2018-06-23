@@ -805,6 +805,7 @@ const unsigned char* unpackFauxJoint(const unsigned char* sourceBuffer, ThreadSa
 
 // read data in packet starting at byte offset and return number of bytes parsed
 int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
+    // qCWarning(avatars) << "name is " << getName();
 
     // lazily allocate memory for HeadData in case we're not an Avatar instance
     lazyInitHeadData();

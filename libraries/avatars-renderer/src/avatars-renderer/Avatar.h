@@ -27,6 +27,10 @@
 #include "Head.h"
 #include "SkeletonModel.h"
 #include "Rig.h"
+//#include "../../interface/src/Application.h"
+#include "../../interface/src/ui/overlays/Overlays.h"
+#include "../../interface/src/ui/overlays/Sphere3DOverlay.h"
+
 #include <ThreadSafeValueCache.h>
 
 namespace render {
@@ -540,6 +544,10 @@ protected:
     AABox _renderBound;
     bool _isMeshVisible{ true };
     bool _needMeshVisibleSwitch{ true };
+
+    std::shared_ptr<Sphere3DOverlay> _purpleOrbMeshPlaceholder { nullptr };
+    OverlayID _purpleOrbMeshPlaceholderID { UNKNOWN_OVERLAY_ID };
+
 };
 
 #endif // hifi_Avatar_h
