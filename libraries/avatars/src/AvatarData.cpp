@@ -43,7 +43,7 @@
 
 #include "AvatarLogging.h"
 
-//#define WANT_DEBUG
+#define WANT_DEBUG
 
 quint64 DEFAULT_FILTERED_LOG_EXPIRY = 2 * USECS_PER_SECOND;
 
@@ -1592,6 +1592,7 @@ glm::quat AvatarData::getOrientationOutbound() const {
 static const QUrl emptyURL("");
 QUrl AvatarData::cannonicalSkeletonModelURL(const QUrl& emptyURL) const {
     // We don't put file urls on the wire, but instead convert to empty.
+    qCDebug(avatars) << "checking file url for word file if present then use empty or default for the avatar";
     return _skeletonModelURL.scheme() == "file" ? emptyURL : _skeletonModelURL;
 }
 
@@ -1673,7 +1674,7 @@ void AvatarData::processAvatarIdentity(const QByteArray& identityData, bool& ide
 
 #ifdef WANT_DEBUG
         qCDebug(avatars) << __FUNCTION__
-            << "identity.uuid:" << identity.uuid
+         //   << "identity.uuid:" << identity.uuid
             << "identity.skeletonModelURL:" << identity.skeletonModelURL
             << "identity.displayName:" << identity.displayName
             << "identity.sessionDisplayName:" << identity.sessionDisplayName;
