@@ -1340,6 +1340,24 @@ void Avatar::scaleVectorRelativeToPosition(glm::vec3 &positionToScale) const {
 
 void Avatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
     qCWarning(avatars_renderer) << "set the url -------+++++++++++++++++++++++++++++";
+    qCWarning(avatars_renderer) << "add the purple orb ************************";
+    if (_purpleOrbMeshPlaceholderID == UNKNOWN_OVERLAY_ID || !qApp->getOverlays().isAddedOverlay(_purpleOrbMeshPlaceholderID)) {
+        _purpleOrbMeshPlaceholder = std::make_shared<Sphere3DOverlay>();
+        _purpleOrbMeshPlaceholder->setAlpha(1.0f);
+        _purpleOrbMeshPlaceholder->setColor({ 0xFF, 0x00, 0xFF });
+        _purpleOrbMeshPlaceholder->setIsSolid(false);
+        _purpleOrbMeshPlaceholder->setPulseMin(0.5);
+        _purpleOrbMeshPlaceholder->setPulseMax(1.0);
+        _purpleOrbMeshPlaceholder->setColorPulse(1.0);
+        _purpleOrbMeshPlaceholder->setIgnoreRayIntersection(true);
+        _purpleOrbMeshPlaceholder->setDrawInFront(false);
+        _purpleOrbMeshPlaceholderID = qApp->getOverlays().addOverlay(_purpleOrbMeshPlaceholder);
+        // Position focus
+        _purpleOrbMeshPlaceholder->setWorldOrientation(glm::quat(0.0f, 0.0f, 0.0f, 1.0));
+        _purpleOrbMeshPlaceholder->setWorldPosition(glm::vec3(476.0f, 500.0f, 493.0f));
+        _purpleOrbMeshPlaceholder->setDimensions(glm::vec3(0.5f, 0.5f, 0.5f));
+        _purpleOrbMeshPlaceholder->setVisible(true);
+    }
     AvatarData::setSkeletonModelURL(skeletonModelURL);
     if (QThread::currentThread() == thread()) {
         _skeletonModel->setURL(_skeletonModelURL);
@@ -1361,24 +1379,8 @@ void Avatar::setModelURLFinished(bool success) {
         
         // this is where I think the blue orb should be created if we are not loaded yet
         // AA
-        qCWarning(avatars_renderer) << "add the purple orb ************************";
-        if (_purpleOrbMeshPlaceholderID == UNKNOWN_OVERLAY_ID || !qApp->getOverlays().isAddedOverlay(_purpleOrbMeshPlaceholderID)) {
-            _purpleOrbMeshPlaceholder = std::make_shared<Sphere3DOverlay>();
-            _purpleOrbMeshPlaceholder->setAlpha(1.0f);
-            _purpleOrbMeshPlaceholder->setColor({ 0xFF, 0x00, 0xFF });
-            _purpleOrbMeshPlaceholder->setIsSolid(false);
-            _purpleOrbMeshPlaceholder->setPulseMin(0.5);
-            _purpleOrbMeshPlaceholder->setPulseMax(1.0);
-            _purpleOrbMeshPlaceholder->setColorPulse(1.0);
-            _purpleOrbMeshPlaceholder->setIgnoreRayIntersection(true);
-            _purpleOrbMeshPlaceholder->setDrawInFront(false);
-            _purpleOrbMeshPlaceholderID = qApp->getOverlays().addOverlay(_purpleOrbMeshPlaceholder);
-            // Position focus
-            _purpleOrbMeshPlaceholder->setWorldOrientation(glm::quat(0.0f, 0.0f, 0.0f, 1.0));
-            _purpleOrbMeshPlaceholder->setWorldPosition(glm::vec3(476.0f, 500.0f, 493.0f));
-            _purpleOrbMeshPlaceholder->setDimensions(glm::vec3(0.5f, 0.5f, 0.5f));
-            _purpleOrbMeshPlaceholder->setVisible(true);
-        }
+        
+        
 
         const int MAX_SKELETON_DOWNLOAD_ATTEMPTS = 4; // NOTE: we don't want to be as generous as ResourceCache is, we only want 4 attempts
         if (_skeletonModel->getResourceDownloadAttemptsRemaining() <= 0 ||
