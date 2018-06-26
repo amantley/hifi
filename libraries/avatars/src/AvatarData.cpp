@@ -43,7 +43,7 @@
 
 #include "AvatarLogging.h"
 
-#define WANT_DEBUG
+//#define WANT_DEBUG
 
 quint64 DEFAULT_FILTERED_LOG_EXPIRY = 2 * USECS_PER_SECOND;
 

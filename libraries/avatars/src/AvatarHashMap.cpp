@@ -93,6 +93,7 @@ AvatarSharedPointer AvatarHashMap::newOrExistingAvatar(const QUuid& sessionUUID,
     QWriteLocker locker(&_hashLock);
     auto avatar = _avatarHash.value(sessionUUID);
     if (!avatar) {
+        qCDebug(avatars) << "adding an avatar in new or existing";
         avatar = addAvatar(sessionUUID, mixerWeakPointer);
     }
     return avatar;
@@ -127,12 +128,14 @@ AvatarSharedPointer AvatarHashMap::parseAvatarData(QSharedPointer<ReceivedMessag
 
     if (sessionUUID != _lastOwnerSessionUUID && (!nodeList->isIgnoringNode(sessionUUID) || nodeList->getRequestsDomainListData())) {
         auto avatar = newOrExistingAvatar(sessionUUID, sendingNode);
+        //qCDebug(avatars) << "creating a new avatar in hash map";
 
         // have the matching (or new) avatar parse the data from the packet
         int bytesRead = avatar->parseDataFromBuffer(byteArray);
         message->seek(positionBeforeRead + bytesRead);
         return avatar;
     } else {
+        qCDebug(avatars) << "created a dummy to dump the data";
         // create a dummy AvatarData class to throw this data on the ground
         AvatarData dummyData;
         int bytesRead = dummyData.parseDataFromBuffer(byteArray);

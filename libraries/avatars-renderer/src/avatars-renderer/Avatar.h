@@ -369,6 +369,11 @@ public:
 
     virtual scriptable::ScriptableModelBase getScriptableModel() override;
 
+    void removeOrb();
+    void updateOrbPosition();
+    std::shared_ptr<Sphere3DOverlay> _purpleOrbMeshPlaceholder{ nullptr };
+    OverlayID _purpleOrbMeshPlaceholderID{ UNKNOWN_OVERLAY_ID };
+
 public slots:
 
     // FIXME - these should be migrated to use Pose data instead
@@ -544,9 +549,6 @@ protected:
     AABox _renderBound;
     bool _isMeshVisible{ true };
     bool _needMeshVisibleSwitch{ true };
-
-    std::shared_ptr<Sphere3DOverlay> _purpleOrbMeshPlaceholder { nullptr };
-    OverlayID _purpleOrbMeshPlaceholderID { UNKNOWN_OVERLAY_ID };
 
 };
 
