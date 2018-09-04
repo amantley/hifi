@@ -4617,7 +4617,7 @@ void Application::idle() {
 
     checkChangeCursor();
 
-    Stats::getInstance()->updateStats();
+    //Stats::getInstance()->updateStats();
 
     // Normally we check PipelineWarnings, but since idle will often take more than 10ms we only show these idle timing
     // details if we're in ExtraDebugging mode. However, the ::update() and its subcomponents will show their timing
@@ -4635,6 +4635,8 @@ void Application::idle() {
         static const float BIGGEST_DELTA_TIME_SECS = 0.25f;
         update(glm::clamp(secondsSinceLastUpdate, 0.0f, BIGGEST_DELTA_TIME_SECS));
     }
+    Stats::getInstance()->updateStats();
+
 
 
     // Update focus highlight for entity or overlay.
