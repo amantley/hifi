@@ -2694,6 +2694,7 @@ void MyAvatar::updateActionMotor(float deltaTime) {
     glm::vec3 right = (getDriveKey(TRANSLATE_X)) * IDENTITY_RIGHT;
 
     glm::vec3 direction = forward + right;
+    qCDebug(interfaceapp) << direction;
     if (state == CharacterController::State::Hover ||
             _characterController.computeCollisionGroup() == BULLET_COLLISION_GROUP_COLLISIONLESS) {
         glm::vec3 up = (getDriveKey(TRANSLATE_Y)) * IDENTITY_UP;
@@ -2736,7 +2737,11 @@ void MyAvatar::updateActionMotor(float deltaTime) {
         const glm::vec2 currentVel = { direction.x, direction.z };
         float scaledSpeed = scaleSpeedByDirection(currentVel, _walkSpeed.get(), _walkBackwardSpeed.get());
         // _walkSpeedScalar is a multiplier if we are in sprint mode, otherwise 1.0
-        _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * _walkSpeedScalar)  * direction;
+        if (direction.z < -0.0f) {
+            _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * _walkSpeedScalar) * direction;
+        } else {
+            _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * (_walkSpeedScalar * 0.5f)) * direction;
+        }
     }
 
     float previousBoomLength = _boomLength;
