@@ -5627,8 +5627,8 @@ void Application::update(float deltaTime) {
         // Transfer the user inputs to the driveKeys
         // FIXME can we drop drive keys and just have the avatar read the action states directly?
         myAvatar->clearDriveKeys();
-        if (_myCamera.getMode() != CAMERA_MODE_INDEPENDENT) {
-            if (!_controllerScriptingInterface->areActionsCaptured() && _myCamera.getMode() != CAMERA_MODE_MIRROR) {
+        if (true){//_myCamera.getMode() != CAMERA_MODE_INDEPENDENT) {
+            //if (!_controllerScriptingInterface->areActionsCaptured() && _myCamera.getMode() != CAMERA_MODE_MIRROR) {
                 myAvatar->setDriveKey(MyAvatar::TRANSLATE_Z, -1.0f * userInputMapper->getActionState(controller::Action::TRANSLATE_Z));
                 myAvatar->setDriveKey(MyAvatar::TRANSLATE_Y, userInputMapper->getActionState(controller::Action::TRANSLATE_Y));
                 myAvatar->setDriveKey(MyAvatar::TRANSLATE_X, userInputMapper->getActionState(controller::Action::TRANSLATE_X));
@@ -5637,7 +5637,7 @@ void Application::update(float deltaTime) {
                     myAvatar->setDriveKey(MyAvatar::YAW, -1.0f * userInputMapper->getActionState(controller::Action::YAW));
                     myAvatar->setDriveKey(MyAvatar::STEP_YAW, -1.0f * userInputMapper->getActionState(controller::Action::STEP_YAW));
                 }
-            }
+            //}
             myAvatar->setDriveKey(MyAvatar::ZOOM, userInputMapper->getActionState(controller::Action::TRANSLATE_CAMERA_Z));
         }
 
