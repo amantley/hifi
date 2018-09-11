@@ -2737,10 +2737,10 @@ void MyAvatar::updateActionMotor(float deltaTime) {
         const glm::vec2 currentVel = { direction.x, direction.z };
         float scaledSpeed = scaleSpeedByDirection(currentVel, _walkSpeed.get(), _walkBackwardSpeed.get());
         // _walkSpeedScalar is a multiplier if we are in sprint mode, otherwise 1.0
-        if (direction.z < -0.0f) {
-            _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * _walkSpeedScalar) * direction;
-        } else {
+        if (direction.z > 0.01f && (_walkSpeedScalar > 1.0)) {
             _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * (_walkSpeedScalar * 0.5f)) * direction;
+        } else {
+            _actionMotorVelocity = getSensorToWorldScale() * (scaledSpeed * _walkSpeedScalar) * direction;
         }
     }
 
