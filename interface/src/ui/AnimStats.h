@@ -12,6 +12,13 @@
 #include <OffscreenQmlElement.h>
 #include <AnimContext.h>
 
+#include <QThread>
+#include <QString>
+#include <QStringList>
+#include <map>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 class AnimStats : public QQuickItem {
     Q_OBJECT
     HIFI_QML_DECL

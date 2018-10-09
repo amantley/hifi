@@ -37,6 +37,7 @@ public:
     AnimContext() {}
     AnimContext(bool enableDebugDrawIKTargets, bool enableDebugDrawIKConstraints, bool enableDebugDrawIKChains,
                 const glm::mat4& geometryToRigMatrix, const glm::mat4& rigToWorldMatrix);
+    AnimContext& operator=(const AnimContext&  other);
 
     bool getEnableDebugDrawIKTargets() const { return _enableDebugDrawIKTargets; }
     bool getEnableDebugDrawIKConstraints() const { return _enableDebugDrawIKConstraints; }
