@@ -94,6 +94,12 @@ Rig::~Rig() {
     }
 }
 
+const AnimContext::DebugAlphaMap& Rig::getDebugAlphaMap() const { 
+    const AnimContext::DebugAlphaMap& tmp = _lastContext.getDebugAlphaMap(); 
+    QThread::sleep(0.25f); 
+    return tmp; 
+}
+
 void Rig::overrideAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
 
     UserAnimState::ClipNodeEnum clipNodeEnum;

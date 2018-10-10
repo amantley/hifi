@@ -223,7 +223,7 @@ public:
     void computeHeadFromHMD(const AnimPose& hmdPose, glm::vec3& headPositionOut, glm::quat& headOrientationOut) const;
 
     // used to debug animation playback
-    const AnimContext::DebugAlphaMap& getDebugAlphaMap() const { return _lastContext.getDebugAlphaMap(); }
+    const AnimContext::DebugAlphaMap& getDebugAlphaMap() const;// { const AnimContext::DebugAlphaMap& tmp = _lastContext.getDebugAlphaMap(); QThread::sleep(0.25f); return tmp; }
     const AnimVariantMap& getAnimVars() const { return _lastAnimVars; }
     const AnimContext::DebugStateMachineMap& getStateMachineMap() const { return _lastContext.getStateMachineMap(); }
 

@@ -9,8 +9,9 @@
 //
 
 #include "AnimContext.h"
-#include <QThread>
+#include <QtCore/QThread>
 #include "AnimationLogging.h"
+
 
 AnimContext::AnimContext(bool enableDebugDrawIKTargets, bool enableDebugDrawIKConstraints, bool enableDebugDrawIKChains,
                          const glm::mat4& geometryToRigMatrix, const glm::mat4& rigToWorldMatrix) :
@@ -30,6 +31,7 @@ AnimContext& AnimContext::operator=(const AnimContext& other) {
     _rigToWorldMatrix = other._rigToWorldMatrix;
     qCDebug(animation) << "size of the state maching map " << size(_stateMachineMap) << " other " << size(other._stateMachineMap);
     //qCDebug(animation) << "size of the debug alpha map " << size(_debugAlphaMap) << " other " << size(other._debugAlphaMap);
+    //QThread::sleep(0.2f);
     _debugAlphaMap = other._debugAlphaMap;
     _stateMachineMap = other._stateMachineMap;
 

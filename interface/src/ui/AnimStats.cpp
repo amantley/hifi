@@ -13,6 +13,7 @@
 #include "Menu.h"
 #include "AnimationLogging.h"
 #include "AnimContext.h"
+#include <QtCore/QThread>
 
 HIFI_QML_DEF(AnimStats)
 
@@ -156,10 +157,16 @@ void AnimStats::updateStats(bool force) {
 
     // animation state machines
     _animStateMachines.clear();
-    const std::map<QString,QString> stateMachineMap = (std::map<QString, QString>)myAvatar->getSkeletonModel()->getRig().getStateMachineMap();
-    // qCDebug(animation) << "size state machine map anim stats " << size(stateMachineMap);
-    for (auto& iter : stateMachineMap) {
-        _animStateMachines << iter.second;
+    AnimContext::DebugStateMachineMapValue tmp("fred");
+    //const AnimContext::DebugStateMachineMap 
+        auto stateMachineMap = myAvatar->getSkeletonModel()->getRig().getStateMachineMap();
+    //qCDebug(animation) << "size state machine map anim stats " << size((const AnimContext::DebugStateMachineMap)stateMachineMap);
+    for (AnimContext::DebugStateMachineMap::const_iterator& iter = stateMachineMap.begin(); iter != stateMachineMap.end();++iter) {
+    //for (auto& iter : stateMachineMap) {
+       // QThread::sleep(1.0f);
+        
+        _animStateMachines << iter->second;
+        
     }
     emit animStateMachinesChanged();
 }
