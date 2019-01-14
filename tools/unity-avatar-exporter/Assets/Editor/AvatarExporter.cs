@@ -435,7 +435,8 @@ class AvatarExporter : MonoBehaviour {
                 outputJointName = userBoneName;
                 string lastRequiredParent = FindLastRequiredParentBone(userBoneName);
                 if (lastRequiredParent == "root") {
-                    jointOffset = Quaternion.Inverse(userAbsoluteRotations[userBoneName]);
+                    //jointOffset = Quaternion.Inverse(userAbsoluteRotations[userBoneName]);
+                    jointOffset = Quaternion.Inverse(userBoneRotation);
                 } else {
                     // take the previous offset and multiply it by the current local when we have an extra joint
                     string lastRequiredParentHifiName = HUMANOID_TO_HIFI_JOINT_NAME[userBoneToHumanoidMappings[lastRequiredParent]];

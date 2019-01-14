@@ -1310,8 +1310,9 @@ HFMModel* FBXSerializer::extractHFMModel(const QVariantHash& mapping, const QStr
         if (hfmModel.hfmToHifiJointNameMapping.contains(hfmModel.hfmToHifiJointNameMapping.key(joint.name))) {
             joint.name = hfmModel.hfmToHifiJointNameMapping.key(fbxModel.name);
         }
-
+        qCDebug(modelformat) << "import joint: " << joint.name;
         foreach (const QString& childID, _connectionChildMap.values(modelID)) {
+            qCDebug(modelformat) << "child id: " << childID;
             QString type = typeFlags.value(childID);
             if (!type.isEmpty()) {
                 hfmModel.hasSkeletonJoints |= (joint.isSkeletonJoint = type.toLower().contains("Skeleton"));
