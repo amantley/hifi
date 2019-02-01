@@ -75,20 +75,6 @@ static const QString RIGHT_FOOT_IK_ROTATION_VAR("rightFootIKRotationVar");
 static const QString MAIN_STATE_MACHINE_RIGHT_FOOT_ROTATION("mainStateMachineRightFootRotation");
 static const QString MAIN_STATE_MACHINE_RIGHT_FOOT_POSITION("mainStateMachineRightFootPosition");
 
-static const QString LEFT_HAND_POSITION("leftHandPosition");
-static const QString LEFT_HAND_ROTATION("leftHandRotation");
-static const QString LEFT_HAND_IK_POSITION_VAR("leftHandIKPositionVar");
-static const QString LEFT_HAND_IK_ROTATION_VAR("leftHandIKRotationVar");
-static const QString MAIN_STATE_MACHINE_LEFT_HAND_POSITION("mainStateMachineLeftHandPosition");
-static const QString MAIN_STATE_MACHINE_LEFT_HAND_ROTATION("mainStateMachineLeftHandRotation");
-
-static const QString RIGHT_HAND_POSITION("rightHandPosition");
-static const QString RIGHT_HAND_ROTATION("rightHandRotation");
-static const QString RIGHT_HAND_IK_POSITION_VAR("rightHandIKPositionVar");
-static const QString RIGHT_HAND_IK_ROTATION_VAR("rightHandIKRotationVar");
-static const QString MAIN_STATE_MACHINE_RIGHT_HAND_ROTATION("mainStateMachineRightHandRotation");
-static const QString MAIN_STATE_MACHINE_RIGHT_HAND_POSITION("mainStateMachineRightHandPosition");
-
 
 Rig::Rig() {
     // Ensure thread-safe access to the rigRegistry.
@@ -1221,9 +1207,7 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
             _networkPoseSet._relativePoses = _animSkeleton->getRelativeDefaultPoses();
         }
         _lastAnimVars = _animVars;
-        _animVars.clearTriggers();
         _animVars = triggersOut;
-        _networkVars.clearTriggers();
         _networkVars = networkTriggersOut;
         _lastContext = context;
     }
@@ -1270,7 +1254,6 @@ void Rig::computeHeadFromHMD(const AnimPose& hmdPose, glm::vec3& headPositionOut
 void Rig::updateHead(bool headEnabled, bool hipsEnabled, const AnimPose& headPose) {
     if (_animSkeleton) {
         if (headEnabled) {
-            _animVars.set("splineIKEnabled", true);
             _animVars.set("headPosition", headPose.trans());
             _animVars.set("headRotation", headPose.rot());
             if (hipsEnabled) {
@@ -1285,7 +1268,6 @@ void Rig::updateHead(bool headEnabled, bool hipsEnabled, const AnimPose& headPos
                 _animVars.set("headWeight", 8.0f);
             }
         } else {
-            _animVars.set("splineIKEnabled", false);
             _animVars.unset("headPosition");
             _animVars.set("headRotation", headPose.rot());
             _animVars.set("headType", (int)IKTarget::Type::RotationOnly);
@@ -1417,21 +1399,7 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
 
     const bool ENABLE_POLE_VECTORS = true;
 
-    if (headEnabled) {
-        // always do IK if head is enabled
-        _animVars.set("leftHandIKEnabled", true);
-        _animVars.set("rightHandIKEnabled", true);
-    } else {
-        // only do IK if we have a valid foot.
-        _animVars.set("leftHandIKEnabled", leftHandEnabled);
-        _animVars.set("rightHandIKEnabled", rightHandEnabled);
-    }
-
     if (leftHandEnabled) {
-
-        // we need this for twoBoneIK version of hands.
-        _animVars.set(LEFT_HAND_IK_POSITION_VAR, LEFT_HAND_POSITION);
-        _animVars.set(LEFT_HAND_IK_ROTATION_VAR, LEFT_HAND_ROTATION);
 
         glm::vec3 handPosition = leftHandPose.trans();
         glm::quat handRotation = leftHandPose.rot();
@@ -1465,11 +1433,8 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
             _animVars.set("leftHandPoleVectorEnabled", false);
         }
     } else {
-        // need this for two bone ik
-        _animVars.set(LEFT_HAND_IK_POSITION_VAR, MAIN_STATE_MACHINE_LEFT_HAND_POSITION);
-        _animVars.set(LEFT_HAND_IK_ROTATION_VAR, MAIN_STATE_MACHINE_LEFT_HAND_ROTATION);
-
         _animVars.set("leftHandPoleVectorEnabled", false);
+
         _animVars.unset("leftHandPosition");
         _animVars.unset("leftHandRotation");
 
@@ -1482,10 +1447,6 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
     }
 
     if (rightHandEnabled) {
-
-        // need this for two bone IK
-        _animVars.set(RIGHT_HAND_IK_POSITION_VAR, RIGHT_HAND_POSITION);
-        _animVars.set(RIGHT_HAND_IK_ROTATION_VAR, RIGHT_HAND_ROTATION);
 
         glm::vec3 handPosition = rightHandPose.trans();
         glm::quat handRotation = rightHandPose.rot();
@@ -1520,12 +1481,8 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
             _animVars.set("rightHandPoleVectorEnabled", false);
         }
     } else {
-
-        // need this for two bone IK
-        _animVars.set(RIGHT_HAND_IK_POSITION_VAR, MAIN_STATE_MACHINE_RIGHT_HAND_POSITION);
-        _animVars.set(RIGHT_HAND_IK_ROTATION_VAR, MAIN_STATE_MACHINE_RIGHT_HAND_ROTATION);
-
         _animVars.set("rightHandPoleVectorEnabled", false);
+
         _animVars.unset("rightHandPosition");
         _animVars.unset("rightHandRotation");
 
@@ -1865,7 +1822,7 @@ void Rig::updateFromControllerParameters(const ControllerParameters& params, flo
     std::shared_ptr<AnimInverseKinematics> ikNode = getAnimInverseKinematicsNode();
     for (int i = 0; i < (int)NumSecondaryControllerTypes; i++) {
         int index = indexOfJoint(secondaryControllerJointNames[i]);
-        if ((index >= 0) && (ikNode)) {
+        if (index >= 0) {
             if (params.secondaryControllerFlags[i] & (uint8_t)ControllerFlags::Enabled) {
                 ikNode->setSecondaryTargetInRigFrame(index, params.secondaryControllerPoses[i]);
             } else {
