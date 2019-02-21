@@ -1721,10 +1721,10 @@ static float getHandPositionTheta(glm::vec3 armToHand, float defaultArmLength, b
 
     const float LOWER_ANATOMICAL_ANGLE = 175.0f;
     const float UPPER_ANATOMICAL_ANGLE = 50.0f;
-    if (handPositionTheta < LOWER_ANATOMICAL_ANGLE) {
+    if (handPositionTheta > LOWER_ANATOMICAL_ANGLE) {
         handPositionTheta = LOWER_ANATOMICAL_ANGLE;
     }
-    if (handPositionTheta > UPPER_ANATOMICAL_ANGLE) {
+    if (handPositionTheta < UPPER_ANATOMICAL_ANGLE) {
         handPositionTheta = UPPER_ANATOMICAL_ANGLE;
     }
 
@@ -1886,19 +1886,25 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     float deltaThetaRadians = (deltaTheta / 180.0f)*PI;
     AnimPose deltaRot(glm::angleAxis(deltaThetaRadians, unitAxis), glm::vec3());
     AnimPose relMid = shoulderPose.inverse() * elbowPose;
-    
+
 
     glm::quat axisRotation;
     glm::quat nonAxisRotation;
     swingTwistDecomposition(shoulderPose.rot(), unitAxis, nonAxisRotation, axisRotation);
 
-    AnimPose positionalAxisRotation(glm::angleAxis(glm::sign(glm::axis(axisRotation)[2]) * glm::angle(axisRotation), unitAxis),glm::vec3());
+    AnimPose positionalAxisRotation(glm::angleAxis(glm::sign(glm::axis(axisRotation)[2]) * glm::angle(axisRotation), unitAxis), glm::vec3());
     AnimPose nonAxisPose(nonAxisRotation, glm::vec3());
     AnimPose updatedBase = shoulderPose * nonAxisPose * positionalAxisRotation;
     AnimPose newAbsMid = updatedBase * relMid;
 
-    qCDebug(animation) << "the rotation about the axis of the arm " << (glm::sign(glm::axis(axisRotation)[2]) * glm::angle(axisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
+    glm::quat testAxisRotation;
+    glm::quat testNonAxisRotation;
+    swingTwistDecomposition(updatedBase.rot(), unitAxis, testNonAxisRotation, testAxisRotation);
+    float testAngle = glm::angle(testAxisRotation);
 
+    if (left) {
+        qCDebug(animation) << "the orig angle rotation " <<  (glm::angle(axisRotation) / PI)*180.0f << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
+    }
 
     // now we calculate the contribution of the hand rotation relative to the arm
     glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
