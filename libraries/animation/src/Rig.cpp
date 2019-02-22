@@ -1893,23 +1893,29 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     AnimPose deltaRot(glm::angleAxis(deltaThetaRadians, unitAxis), glm::vec3());
     AnimPose relMid = shoulderPose.inverse() * elbowPose;
 
+    // first find the axis in the parent's coord system
+    int shoulderParentIndex = _animSkeleton->getParentIndex(shoulderIndex);
+    AnimPose parentShoulderPose = _externalPoseSet._absolutePoses[shoulderParentIndex];
+    AnimPose relativeShoulder = parentShoulderPose.inverse() * shoulderPose;
+    parentShoulderPose.trans() = Vectors::ZERO;
+    glm::vec3 axisInParentCoordinateSystem = parentShoulderPose.inverse() * unitAxis;
 
     glm::quat axisRotation;
     glm::quat nonAxisRotation;
-    swingTwistDecomposition(shoulderPose.rot(), unitAxis, nonAxisRotation, axisRotation);
-    float angleSign = glm::dot(glm::axis(axisRotation), unitAxis);
-    AnimPose positionalAxisRotation(glm::angleAxis(glm::sign(angleSign) * glm::angle(axisRotation), unitAxis), glm::vec3());
+    swingTwistDecomposition(relativeShoulder.rot(), axisInParentCoordinateSystem, nonAxisRotation, axisRotation);
+    float angleSign = glm::sign(glm::dot(glm::axis(axisRotation), axisInParentCoordinateSystem));
+    AnimPose positionalAxisRotation(glm::angleAxis(angleSign * glm::angle(axisRotation), axisInParentCoordinateSystem), glm::vec3());
     AnimPose nonAxisPose(nonAxisRotation, glm::vec3());
-    AnimPose updatedBase = nonAxisPose * positionalAxisRotation;
-    AnimPose newAbsMid = updatedBase * relMid;
+    AnimPose updatedRelativeBase = nonAxisPose * positionalAxisRotation;
+    AnimPose newAbsMid = updatedRelativeBase * relMid;
 
     glm::quat testAxisRotation;
     glm::quat testNonAxisRotation;
-    swingTwistDecomposition(updatedBase.rot(), unitAxis, testNonAxisRotation, testAxisRotation);
+    swingTwistDecomposition(updatedRelativeBase.rot(), axisInParentCoordinateSystem, testNonAxisRotation, testAxisRotation);
     float testAngle = glm::angle(testAxisRotation);
 
     if (left) {
-        qCDebug(animation) << "the orig angle rotation " << (glm::angle(axisRotation) / PI)*180.0f << " axis " <<  unitAxis << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
+        qCDebug(animation) << "the orig angle rotation " << (glm::angle(axisRotation) / PI)*180.0f << " axes " << glm::axis(axisRotation) << " ||| " <<  unitAxis << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
     }
 
     // now we calculate the contribution of the hand rotation relative to the arm
@@ -2015,7 +2021,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
             _lastThetaLeft = lowerBoundary;
         }
         // convert to radians and make 180 0 to match pole vector theta
-        qCDebug(animation) << " last theta " << _lastThetaLeft;
+        //qCDebug(animation) << " last theta " << _lastThetaLeft;
         thetaRadians = ((180.0f - _lastThetaLeft) / 180.0f)*PI;
     } else {
 
