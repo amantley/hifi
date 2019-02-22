@@ -34,6 +34,7 @@
 #include "IKTarget.h"
 #include "PathUtils.h"
 
+#define HIFI_USE_Q_OS_ANDROID
 static int nextRigId = 1;
 static std::map<int, Rig*> rigRegistry;
 static std::mutex rigRegistryMutex;
@@ -1973,12 +1974,12 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     // get the correction angle for each axis and add it to the base pole vector theta
     float currentWristCoefficient = 0.0f;
     if (left) {
-        currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageLeft, left);
-        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft, left);
+        //currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageLeft, left);
+        //currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft, left);
         //currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, left);
     } else {
-        currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageRight, left);
-        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, left);
+        //currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageRight, left);
+        //currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, left);
         //currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, left);
     }
 
