@@ -121,6 +121,7 @@ const AnimPoseVec& AnimPoleVectorConstraint::evaluate(const AnimVariantMap& anim
         float sideDot = glm::dot(poleVector, sideVector);
         float theta = copysignf(1.0f, sideDot) * acosf(dot);
 
+        qCDebug(animation) << "theta in polevector constraint" << theta;
         glm::quat deltaRot = glm::angleAxis(theta, unitAxis);
 
         // transform result back into parent relative frame.

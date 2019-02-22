@@ -1897,10 +1897,10 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     glm::quat axisRotation;
     glm::quat nonAxisRotation;
     swingTwistDecomposition(shoulderPose.rot(), unitAxis, nonAxisRotation, axisRotation);
-
-    AnimPose positionalAxisRotation(glm::angleAxis(glm::sign(glm::axis(axisRotation)[2]) * glm::angle(axisRotation), unitAxis), glm::vec3());
+    float angleSign = glm::dot(glm::axis(axisRotation), unitAxis);
+    AnimPose positionalAxisRotation(glm::angleAxis(glm::sign(angleSign) * glm::angle(axisRotation), unitAxis), glm::vec3());
     AnimPose nonAxisPose(nonAxisRotation, glm::vec3());
-    AnimPose updatedBase = shoulderPose * nonAxisPose * positionalAxisRotation;
+    AnimPose updatedBase = nonAxisPose * positionalAxisRotation;
     AnimPose newAbsMid = updatedBase * relMid;
 
     glm::quat testAxisRotation;
@@ -1909,12 +1909,12 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     float testAngle = glm::angle(testAxisRotation);
 
     if (left) {
-        qCDebug(animation) << "the orig angle rotation " <<  (glm::angle(axisRotation) / PI)*180.0f << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
+        qCDebug(animation) << "the orig angle rotation " << (glm::angle(axisRotation) / PI)*180.0f << " axis " <<  unitAxis << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
     }
 
     // now we calculate the contribution of the hand rotation relative to the arm
-    glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
-    //glm::quat relativeHandRotation = (elbowPose.inverse() * handPose).rot();
+    //glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
+    glm::quat relativeHandRotation = (elbowPose.inverse() * handPose).rot();
     if (relativeHandRotation.w < 0.0f) {
         relativeHandRotation *= -1.0f;
     }
@@ -2015,6 +2015,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
             _lastThetaLeft = lowerBoundary;
         }
         // convert to radians and make 180 0 to match pole vector theta
+        qCDebug(animation) << " last theta " << _lastThetaLeft;
         thetaRadians = ((180.0f - _lastThetaLeft) / 180.0f)*PI;
     } else {
 
