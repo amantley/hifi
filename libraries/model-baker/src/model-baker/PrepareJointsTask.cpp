@@ -33,8 +33,10 @@ QMap<QString, glm::quat> getJointRotationOffsets(const QVariantHash& mapping) {
     if (!mapping.isEmpty() && ((mapping.contains(JOINT_ROTATION_OFFSET_FIELD) && mapping[JOINT_ROTATION_OFFSET_FIELD].type() == QVariant::Hash) || (mapping.contains(JOINT_ROTATION_OFFSET2_FIELD) && mapping[JOINT_ROTATION_OFFSET2_FIELD].type() == QVariant::Hash))) {
         QHash<QString, QVariant> offsets;
         if (mapping.contains(JOINT_ROTATION_OFFSET_FIELD)) {
+            //newJointRot = false;
             offsets = mapping[JOINT_ROTATION_OFFSET_FIELD].toHash();
         } else {
+            //newJointRot = true;
             offsets = mapping[JOINT_ROTATION_OFFSET2_FIELD].toHash();
         }
         for (auto itr = offsets.begin(); itr != offsets.end(); itr++) {
@@ -68,24 +70,35 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
     auto& jointRotationOffsets = output.edit1();
     auto& jointIndices = output.edit2();
 
+    bool newJointRot = false;
+    static const QString JOINT_ROTATION_OFFSET2_FIELD = "jointRotationOffset2";
+    if (mapping.contains(JOINT_ROTATION_OFFSET2_FIELD)) {
+        newJointRot = true;
+    } else {
+        newJointRot = false;
+    }
+
     // Get joint renames
     auto jointNameMapping = getJointNameMapping(mapping);
+    auto offsets = getJointRotationOffsets(mapping);
     // Apply joint metadata from FST file mappings
     for (const auto& jointIn : jointsIn) {
         jointsOut.push_back(jointIn);
         auto& jointOut = jointsOut.back();
-
-        auto jointNameMapKey = jointNameMapping.key(jointIn.name);
-        if (jointNameMapping.contains(jointNameMapKey)) {
-            jointOut.name = jointNameMapKey;
-        } else {
-            // nothing mapped to this fbx joint name 
-            if (jointNameMapping.contains(jointIn.name)) {
-                // but the name is in the list of hifi names is mapped to a different joint
-                jointOut.name = "non-Hifi Hifi";
+        if (!newJointRot) {
+            auto jointNameMapKey = jointNameMapping.key(jointIn.name);
+            if (jointNameMapping.contains(jointNameMapKey)) {
+                jointOut.name = jointNameMapKey;
+            } else {
+                // nothing mapped to this fbx joint name 
+                if (jointNameMapping.contains(jointIn.name)) {
+                    // but the name is in the list of hifi names is mapped to a different joint
+                    jointOut.name = "non-Hifi Hifi";
+                }
             }
         }
-        qCDebug(model_baker) << "Joint out hifi name is " << jointOut.name  << " in fbx name " << jointIn.name;
+        
+       // qCDebug(model_baker) << "Joint out hifi name is " << jointOut.name  << " in fbx name " << jointIn.name;
         // the logic is this.  if the joint key is not a hifi name
         // you don't have a map for a non hifi name
         // if the name mapping does not contain this joint name it is not a hifi name
@@ -95,7 +108,7 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
     }
 
     // Get joint rotation offsets from FST file mappings
-    auto offsets = getJointRotationOffsets(mapping);
+    
     for (auto itr = offsets.begin(); itr != offsets.end(); itr++) {
         QString jointName = itr.key();
         int jointIndex = jointIndices.value(jointName) - 1;
@@ -103,6 +116,36 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
             glm::quat rotationOffset = itr.value();
             jointRotationOffsets.insert(jointIndex, rotationOffset);
             qCDebug(model_baker) << "Joint Rotation Offset added to Rig._jointRotationOffsets : " << " jointName: " << jointName << " jointIndex: " << jointIndex << " rotation offset: " << rotationOffset;
+        }
+    }
+    if (newJointRot) {
+        for (const auto& jointIn : jointsIn) {
+
+            //jointsOut.push_back(jointIn);
+            //auto& jointOut = jointsOut.back();
+
+            auto jointNameMapKey = jointNameMapping.key(jointIn.name);
+            if (jointNameMapping.contains(jointNameMapKey)) {
+                // delete and replace with hifi name
+                int mappedIndex = jointIndices.value(jointIn.name);
+                jointIndices.remove(jointIn.name);
+                jointIndices.insert(jointNameMapKey, mappedIndex);
+            } else {
+                // nothing mapped to this fbx joint name 
+                if (jointNameMapping.contains(jointIn.name)) {
+                    // but the name is in the list of hifi names is mapped to a different joint
+                    int extraIndex = jointIndices.value(jointIn.name);
+                    jointIndices.remove(jointIn.name);
+                    jointIndices.insert("non-Hifi Hifi", extraIndex);
+                }
+            }
+            qCDebug(model_baker) << "Joint out hifi name is " << jointNameMapKey << " in fbx name " << jointIn.name;
+            // the logic is this.  if the joint key is not a hifi name
+            // you don't have a map for a non hifi name
+            // if the name mapping does not contain this joint name it is not a hifi name
+            // if joint name map key = -1 then nothing maps to you.  
+            // but jointIn.name is contained in jointNameMapping, then there is a conflict and we put "" for the joint name.
+            //jointIndices.insert(jointOut.name, (int)jointsOut.size());
         }
     }
 }
