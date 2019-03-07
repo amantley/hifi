@@ -78,8 +78,19 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
         auto jointNameMapKey = jointNameMapping.key(jointIn.name);
         if (jointNameMapping.contains(jointNameMapKey)) {
             jointOut.name = jointNameMapKey;
+        } else {
+            // nothing mapped to this fbx joint name 
+            if (jointNameMapping.contains(jointIn.name)) {
+                // but the name is in the list of hifi names is mapped to a different joint
+                jointOut.name = "non-Hifi Hifi";
+            }
         }
-
+        qCDebug(model_baker) << "Joint out hifi name is " << jointOut.name  << " in fbx name " << jointIn.name;
+        // the logic is this.  if the joint key is not a hifi name
+        // you don't have a map for a non hifi name
+        // if the name mapping does not contain this joint name it is not a hifi name
+        // if joint name map key = -1 then nothing maps to you.  
+        // but jointIn.name is contained in jointNameMapping, then there is a conflict and we put "" for the joint name.
         jointIndices.insert(jointOut.name, (int)jointsOut.size());
     }
 
