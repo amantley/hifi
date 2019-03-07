@@ -29,8 +29,14 @@ QMap<QString, QString> getJointNameMapping(const QVariantHash& mapping) {
 QMap<QString, glm::quat> getJointRotationOffsets(const QVariantHash& mapping) {
     QMap<QString, glm::quat> jointRotationOffsets;
     static const QString JOINT_ROTATION_OFFSET_FIELD = "jointRotationOffset";
-    if (!mapping.isEmpty() && mapping.contains(JOINT_ROTATION_OFFSET_FIELD) && mapping[JOINT_ROTATION_OFFSET_FIELD].type() == QVariant::Hash) {
-        auto offsets = mapping[JOINT_ROTATION_OFFSET_FIELD].toHash();
+    static const QString JOINT_ROTATION_OFFSET2_FIELD = "jointRotationOffset2";
+    if (!mapping.isEmpty() && ((mapping.contains(JOINT_ROTATION_OFFSET_FIELD) && mapping[JOINT_ROTATION_OFFSET_FIELD].type() == QVariant::Hash) || (mapping.contains(JOINT_ROTATION_OFFSET2_FIELD) && mapping[JOINT_ROTATION_OFFSET2_FIELD].type() == QVariant::Hash))) {
+        QHash<QString, QVariant> offsets;
+        if (mapping.contains(JOINT_ROTATION_OFFSET_FIELD)) {
+            offsets = mapping[JOINT_ROTATION_OFFSET_FIELD].toHash();
+        } else {
+            offsets = mapping[JOINT_ROTATION_OFFSET2_FIELD].toHash();
+        }
         for (auto itr = offsets.begin(); itr != offsets.end(); itr++) {
             QString jointName = itr.key();
             QString line = itr.value().toString();
@@ -43,6 +49,11 @@ QMap<QString, glm::quat> getJointRotationOffsets(const QVariantHash& mapping) {
                 if (!isNaN(quatX) && !isNaN(quatY) && !isNaN(quatZ) && !isNaN(quatW)) {
                     glm::quat rotationOffset = glm::quat(quatW, quatX, quatY, quatZ);
                     jointRotationOffsets.insert(jointName, rotationOffset);
+                    if (mapping.contains(JOINT_ROTATION_OFFSET_FIELD)) {
+                        qCDebug(model_baker) << "joint offset read " << jointName << " " << rotationOffset;
+                    } else {
+                        qCDebug(model_baker) << "joint offset2 read " << jointName << " " << rotationOffset;
+                    }
                 }
             }
         }
