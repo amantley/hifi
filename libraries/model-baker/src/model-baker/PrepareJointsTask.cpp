@@ -65,7 +65,8 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
 
     bool newJointRot = false;
     static const QString JOINT_ROTATION_OFFSET2_FIELD = "jointRotationOffset2";
-    if (mapping.contains(JOINT_ROTATION_OFFSET2_FIELD)) {
+    QVariantHash fstHashMap = mapping.second;
+    if (fstHashMap.contains(JOINT_ROTATION_OFFSET2_FIELD)) {
         newJointRot = true;
     } else {
         newJointRot = false;
@@ -82,12 +83,6 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
             auto jointNameMapKey = jointNameMapping.key(jointIn.name);
             if (jointNameMapping.contains(jointNameMapKey)) {
                 jointOut.name = jointNameMapKey;
-            } else {
-                // nothing mapped to this fbx joint name
-                if (jointNameMapping.contains(jointIn.name)) {
-                    // but the name is in the list of hifi names is mapped to a different joint
-                    jointOut.name = "non-Hifi Hifi";
-                }
             }
         }
         jointIndices.insert(jointOut.name, (int)jointsOut.size());
@@ -114,11 +109,7 @@ void PrepareJointsTask::run(const baker::BakeContextPointer& context, const Inpu
 
                 // delete and replace with hifi name
                 jointIndices.remove(jointIn.name);
-                if (mappedIndex >= 0) {
-                    jointIndices.insert(jointNameMapKey, mappedIndex);
-                } else {
-                    qCDebug(model_baker) << "mapped key failed" << jointNameMapKey << " mapped index " << mappedIndex;
-                }
+                jointIndices.insert(jointNameMapKey, mappedIndex);
             } else {
 
                 // nothing mapped to this fbx joint name
