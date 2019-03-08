@@ -1078,7 +1078,6 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("leftFootPoleVectorEnabled", false);
             _animVars.set("rightFootPoleVectorEnabled", false);
         }
-        
         _lastEnableInverseKinematics = _enableInverseKinematics;
 
     }
