@@ -35,6 +35,7 @@ Rig::CharacterControllerState convertCharacterControllerState(CharacterControlle
     };
 }
 
+#if defined(Q_OS_ANDROID) || defined(HIFI_USE_OPTIMIZED_IK)
 static glm::vec3 computeSpine2WithHeadHipsSpline(MyAvatar* myAvatar, AnimPose hipsIKTargetPose, AnimPose headIKTargetPose) {
 
     // the the ik targets to compute the spline with
@@ -48,6 +49,7 @@ static glm::vec3 computeSpine2WithHeadHipsSpline(MyAvatar* myAvatar, AnimPose hi
     return spine2Translation + myAvatar->getSpine2SplineOffset();
 
 }
+#endif
 
 static AnimPose computeHipsInSensorFrame(MyAvatar* myAvatar, bool isFlying) {
     glm::mat4 worldToSensorMat = glm::inverse(myAvatar->getSensorToWorldMatrix());
@@ -249,10 +251,10 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             myAvatar->getControllerPoseInAvatarFrame(controller::Action::LEFT_HAND).isValid() &&
             !(params.primaryControllerFlags[Rig::PrimaryControllerType_Spine2] & (uint8_t)Rig::ControllerFlags::Enabled)) {
 
+#if defined(Q_OS_ANDROID) || defined(HIFI_USE_OPTIMIZED_IK)
             AnimPose headAvatarSpace(avatarHeadPose.getRotation(), avatarHeadPose.getTranslation());
             AnimPose headRigSpace = avatarToRigPose * headAvatarSpace;
             AnimPose hipsRigSpace = sensorToRigPose * sensorHips;
-#if defined(Q_OS_ANDROID) || defined(HIFI_USE_Q_OS_ANDROID)
             glm::vec3 spine2TargetTranslation = computeSpine2WithHeadHipsSpline(myAvatar, hipsRigSpace, headRigSpace);
 #endif
             const float SPINE2_ROTATION_FILTER = 0.5f;
@@ -265,7 +267,9 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             if (spine2Exists && headExists && hipsExists) {
 
                 AnimPose rigSpaceYaw(myAvatar->getSpine2RotationRigSpace());
+#if defined(Q_OS_ANDROID) || defined(HIFI_USE_OPTIMIZED_IK)
                 rigSpaceYaw.rot() = safeLerp(Quaternions::IDENTITY, rigSpaceYaw.rot(), 0.5f);
+#endif
                 glm::vec3 u, v, w;
                 glm::vec3 fwd = rigSpaceYaw.rot() * glm::vec3(0.0f, 0.0f, 1.0f);
                 glm::vec3 up = currentHeadPose.trans() - currentHipsPose.trans();
@@ -276,7 +280,7 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
                 }
                 generateBasisVectors(up, fwd, u, v, w);
                 AnimPose newSpinePose(glm::mat4(glm::vec4(w, 0.0f), glm::vec4(u, 0.0f), glm::vec4(v, 0.0f), glm::vec4(glm::vec3(0.0f, 0.0f, 0.0f), 1.0f)));
-#if defined(Q_OS_ANDROID) || defined(HIFI_USE_Q_OS_ANDROID)
+#if defined(Q_OS_ANDROID) || defined(HIFI_USE_OPTIMIZED_IK)
                 currentSpine2Pose.trans() = spine2TargetTranslation;
 #endif
                 currentSpine2Pose.rot() = safeLerp(currentSpine2Pose.rot(), newSpinePose.rot(), SPINE2_ROTATION_FILTER);

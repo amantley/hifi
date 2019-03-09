@@ -376,7 +376,6 @@ void Rig::reset(const HFMModel& hfmModel) {
 
     _animSkeleton = std::make_shared<AnimSkeleton>(hfmModel);
 
-
     _internalPoseSet._relativePoses.clear();
     _internalPoseSet._relativePoses = _animSkeleton->getRelativeDefaultPoses();
 
@@ -760,7 +759,8 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
 
     glm::vec3 forward = worldRotation * IDENTITY_FORWARD;
     glm::vec3 workingVelocity = worldVelocity;
-
+    _internalFlow.setTransform(sensorToWorldScale, worldPosition, worldRotation * Quaternions::Y_180);
+    _networkFlow.setTransform(sensorToWorldScale, worldPosition, worldRotation * Quaternions::Y_180);
     {
         glm::vec3 localVel = glm::inverse(worldRotation) * workingVelocity;
 
@@ -1067,13 +1067,6 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
 
         if (_enableInverseKinematics) {
             _animVars.set("ikOverlayAlpha", 1.0f);
-            _animVars.set("splineIKEnabled", true);
-            _animVars.set("leftHandIKEnabled", true);
-            _animVars.set("rightHandIKEnabled", true);
-            _animVars.set("leftFootIKEnabled", true);
-            _animVars.set("rightFootIKEnabled", true);
-            _animVars.set("leftFootPoleVectorEnabled", true);
-            _animVars.set("rightFootPoleVectorEnabled", true);
         } else {
             _animVars.set("ikOverlayAlpha", 0.0f);
             _animVars.set("splineIKEnabled", false);
@@ -1235,12 +1228,26 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
         _networkVars = networkTriggersOut;
         _lastContext = context;
     }
+    
     applyOverridePoses();
-    buildAbsoluteRigPoses(_internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);
-    buildAbsoluteRigPoses(_networkPoseSet._relativePoses, _networkPoseSet._absolutePoses);
+
+    buildAbsoluteRigPoses(_internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);    
+    _internalFlow.update(deltaTime, _internalPoseSet._relativePoses, _internalPoseSet._absolutePoses, _internalPoseSet._overrideFlags);
+
+    if (_sendNetworkNode) {
+        if (_internalFlow.getActive() && !_networkFlow.getActive()) {
+            _networkFlow = _internalFlow;
+        }
+        buildAbsoluteRigPoses(_networkPoseSet._relativePoses, _networkPoseSet._absolutePoses);
+        _networkFlow.update(deltaTime, _networkPoseSet._relativePoses, _networkPoseSet._absolutePoses, _internalPoseSet._overrideFlags);
+    } else if (_networkFlow.getActive()) {
+        _networkFlow.setActive(false);
+    }
+
     // copy internal poses to external poses
     {
         QWriteLocker writeLock(&_externalPoseSetLock);
+        
         _externalPoseSet = _internalPoseSet;
     }
 }
@@ -1460,12 +1467,7 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
         int oppositeArmJointIndex = _animSkeleton->nameToJointIndex("RightArm");
         if (ENABLE_POLE_VECTORS && handJointIndex >= 0 && armJointIndex >= 0 && elbowJointIndex >= 0 && oppositeArmJointIndex >= 0) {
             glm::vec3 poleVector;
-#if defined(Q_OS_ANDROID) || defined(HIFI_USE_Q_OS_ANDROID)
-            bool isLeft = true;
-            bool usePoleVector = calculateElbowPoleVectorOptimized(handJointIndex, elbowJointIndex, armJointIndex, isLeft, poleVector);
-#else
             bool usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
-#endif
             if (usePoleVector) {
                 glm::vec3 sensorPoleVector = transformVectorFast(rigToSensorMatrix, poleVector);
                 _animVars.set("leftHandPoleVectorEnabled", true);
@@ -1520,12 +1522,7 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
 
         if (ENABLE_POLE_VECTORS && handJointIndex >= 0 && armJointIndex >= 0 && elbowJointIndex >= 0 && oppositeArmJointIndex >= 0) {
             glm::vec3 poleVector;
-#if defined(Q_OS_ANDROID) || defined(HIFI_USE_Q_OS_ANDROID)
-            bool isLeft = false;
-            bool usePoleVector = calculateElbowPoleVectorOptimized(handJointIndex, elbowJointIndex, armJointIndex, isLeft, poleVector);
-#else
             bool usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
-#endif
             if (usePoleVector) {
                 glm::vec3 sensorPoleVector = transformVectorFast(rigToSensorMatrix, poleVector);
                 _animVars.set("rightHandPoleVectorEnabled", true);
@@ -2052,6 +2049,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     return true;
 }
 
+
 bool Rig::calculateElbowPoleVector(int handIndex, int elbowIndex, int armIndex, int oppositeArmIndex, glm::vec3& poleVector) const {
     // The resulting Pole Vector is calculated as the sum of a three vectors.
     // The first is the vector with direction shoulder-hand. The module of this vector is inversely proportional to the strength of the resulting Pole Vector.
@@ -2292,7 +2290,6 @@ void Rig::initAnimGraph(const QUrl& url) {
                 auto roleState = roleAnimState.second;
                 overrideRoleAnimation(roleState.role, roleState.url, roleState.fps, roleState.loop, roleState.firstFrame, roleState.lastFrame);
             }
-
             emit onLoadComplete();
         });
         connect(_animLoader.get(), &AnimNodeLoader::error, [url](int error, QString str) {
@@ -2530,4 +2527,17 @@ void Rig::computeAvatarBoundingCapsule(
 
     glm::vec3 capsuleCenter = transformPoint(_geometryToRigTransform, (0.5f * (totalExtents.maximum + totalExtents.minimum)));
     localOffsetOut = capsuleCenter - hipsPosition;
+}
+
+void Rig::initFlow(bool isActive) {
+    _internalFlow.setActive(isActive);
+    if (isActive) {
+        if (!_internalFlow.isInitialized()) {
+            _internalFlow.calculateConstraints(_animSkeleton, _internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);
+            _networkFlow.calculateConstraints(_animSkeleton, _internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);
+        }
+    } else {
+        _internalFlow.cleanUp();
+        _networkFlow.cleanUp();
+    }
 }

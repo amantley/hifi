@@ -25,6 +25,7 @@
 #include "AnimNodeLoader.h"
 #include "SimpleMovingAverage.h"
 #include "AnimUtil.h"
+#include "Flow.h"
 
 class Rig;
 class AnimInverseKinematics;
@@ -233,6 +234,9 @@ public:
     const AnimContext::DebugAlphaMap& getDebugAlphaMap() const { return _lastContext.getDebugAlphaMap(); }
     const AnimVariantMap& getAnimVars() const { return _lastAnimVars; }
     const AnimContext::DebugStateMachineMap& getStateMachineMap() const { return _lastContext.getStateMachineMap(); }
+    void initFlow(bool isActive);
+    Flow& getFlow() { return _internalFlow; }
+
 
 signals:
     void onLoadComplete();
@@ -258,7 +262,6 @@ protected:
     void calcAnimAlpha(float speed, const std::vector<float>& referenceSpeeds, float* alphaOut) const;
 
     bool calculateElbowPoleVector(int handIndex, int elbowIndex, int armIndex, int oppositeArmIndex, glm::vec3& poleVector) const;
-    bool calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int shoulderIndex, bool left, glm::vec3& poleVector);
     glm::vec3 calculateKneePoleVector(int footJointIndex, int kneeJoint, int upLegIndex, int hipsIndex, const AnimPose& targetFootPose) const;
     glm::vec3 deflectHandFromTorso(const glm::vec3& handPosition, const HFMJointShapeInfo& hipsShapeInfo, const HFMJointShapeInfo& spineShapeInfo,
                                    const HFMJointShapeInfo& spine1ShapeInfo, const HFMJointShapeInfo& spine2ShapeInfo) const;
@@ -420,24 +423,13 @@ protected:
     bool _computeNetworkAnimation { false };
     bool _sendNetworkNode { false };
 
-    float _twistThetaRunningAverageLeft { 0.0f };
-    float _flexThetaRunningAverageLeft { 0.0f };
-    float _ulnarRadialThetaRunningAverageLeft { 0.0f };
-    float _twistThetaRunningAverageRight { 0.0f };
-    float _flexThetaRunningAverageRight { 0.0f };
-    float _ulnarRadialThetaRunningAverageRight { 0.0f };
-    float _lastThetaLeft { 0.0f };
-    float _lastThetaRight { 0.0f };
-    float _lastWristCoefficientRight { 0.0f };
-    float _lastWristCoefficientLeft { 0.0f };
-    float _lastPositionThetaLeft { 0.0f };
-    float _lastPositionThetaRight { 0.0f };
-
     AnimContext _lastContext;
     AnimVariantMap _lastAnimVars;
 
     SnapshotBlendPoseHelper _hipsBlendHelper;
     ControllerParameters _previousControllerParameters;
+    Flow _internalFlow;
+    Flow _networkFlow;
 };
 
 #endif /* defined(__hifi__Rig__) */
