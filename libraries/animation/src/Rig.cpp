@@ -34,7 +34,7 @@
 #include "IKTarget.h"
 #include "PathUtils.h"
 
-#define HIFI_USE_Q_OS_ANDROID
+
 static int nextRigId = 1;
 static std::map<int, Rig*> rigRegistry;
 static std::mutex rigRegistryMutex;
@@ -1467,7 +1467,14 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
         int oppositeArmJointIndex = _animSkeleton->nameToJointIndex("RightArm");
         if (ENABLE_POLE_VECTORS && handJointIndex >= 0 && armJointIndex >= 0 && elbowJointIndex >= 0 && oppositeArmJointIndex >= 0) {
             glm::vec3 poleVector;
-            bool usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
+
+            bool usePoleVector = false;
+#ifdef HIFI_USE_OPTIMIZED_IK
+            bool left = true;
+            usePoleVector = calculateElbowPoleVectorOptimized(handJointIndex, elbowJointIndex, armJointIndex, left, poleVector);
+#else
+            usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
+#endif            
             if (usePoleVector) {
                 glm::vec3 sensorPoleVector = transformVectorFast(rigToSensorMatrix, poleVector);
                 _animVars.set("leftHandPoleVectorEnabled", true);
@@ -1522,7 +1529,13 @@ void Rig::updateHands(bool leftHandEnabled, bool rightHandEnabled, bool hipsEnab
 
         if (ENABLE_POLE_VECTORS && handJointIndex >= 0 && armJointIndex >= 0 && elbowJointIndex >= 0 && oppositeArmJointIndex >= 0) {
             glm::vec3 poleVector;
-            bool usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
+            bool usePoleVector = false;
+#ifdef HIFI_USE_OPTIMIZED_IK
+            bool left = false;
+            usePoleVector = calculateElbowPoleVectorOptimized(handJointIndex, elbowJointIndex, armJointIndex, left, poleVector);
+#else
+            usePoleVector = calculateElbowPoleVector(handJointIndex, elbowJointIndex, armJointIndex, oppositeArmJointIndex, poleVector);
+#endif
             if (usePoleVector) {
                 glm::vec3 sensorPoleVector = transformVectorFast(rigToSensorMatrix, poleVector);
                 _animVars.set("rightHandPoleVectorEnabled", true);
@@ -1896,15 +1909,37 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     AnimPose relativeShoulder = parentShoulderPose.inverse() * shoulderPose;
     parentShoulderPose.trans() = Vectors::ZERO;
     glm::vec3 axisInParentCoordinateSystem = parentShoulderPose.inverse() * unitAxis;
+    if (glm::length(axisInParentCoordinateSystem) > 0.0f) {
+        axisInParentCoordinateSystem = axisInParentCoordinateSystem / glm::length(axisInParentCoordinateSystem);
+    } else {
+        // error
+    }
 
     glm::quat axisRotation;
     glm::quat nonAxisRotation;
     swingTwistDecomposition(relativeShoulder.rot(), axisInParentCoordinateSystem, nonAxisRotation, axisRotation);
+    if (axisRotation.w < 0.0f) {
+        axisRotation = axisRotation * -1.0f;
+    }
+    if (nonAxisRotation.w < 0.0f) {
+        nonAxisRotation = nonAxisRotation * -1.0f;
+    }
+    float convertedPositionalTheta = 0.0f;
+    if (left) {
+        convertedPositionalTheta = (-1.0f) * positionalTheta + 270.0f;
+    } else {
+        convertedPositionalTheta = (-1.0f) * positionalTheta + 270.0f;
+    }
+    if (convertedPositionalTheta > 180.0f) {
+        convertedPositionalTheta = convertedPositionalTheta - 360.0f;
+    }
+
     float angleSign = glm::sign(glm::dot(glm::axis(axisRotation), axisInParentCoordinateSystem));
-    AnimPose positionalAxisRotation(glm::angleAxis(angleSign * glm::angle(axisRotation), axisInParentCoordinateSystem), glm::vec3());
+    AnimPose positionalAxisRotation(glm::inverse(glm::angleAxis((convertedPositionalTheta / 180.0f)*PI, axisInParentCoordinateSystem)), glm::vec3());
     AnimPose nonAxisPose(nonAxisRotation, glm::vec3());
     AnimPose updatedRelativeBase = nonAxisPose * positionalAxisRotation;
-    AnimPose newAbsMid = updatedRelativeBase * relMid;
+    AnimPose updatedAbsBase = parentShoulderPose * updatedRelativeBase;
+    AnimPose newAbsMid = updatedAbsBase * relMid;
 
     glm::quat testAxisRotation;
     glm::quat testNonAxisRotation;
@@ -1912,12 +1947,13 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     float testAngle = glm::angle(testAxisRotation);
 
     if (left) {
-        qCDebug(animation) << "the orig angle rotation " << (glm::angle(axisRotation) / PI)*180.0f << " axes " << glm::axis(axisRotation) << " ||| " <<  unitAxis << " the base rotation " << (glm::angle(testAxisRotation) / PI)*180.0f << " positional theta " << positionalTheta;
+        //qCDebug(animation) << "parent coord unit axis " << axisInParentCoordinateSystem << " axis rotation quat " << axisRotation << " axis angle " << (glm::angle(axisRotation) / PI)*180.0f << " rotation axis " << glm::axis(axisRotation);
+        //qCDebug(animation) << "the quat from the underpose " << axisRotation << " the quat from our positional theta " << glm::inverse(glm::angleAxis((convertedPositionalTheta / 180.0f)*PI , axisInParentCoordinateSystem)) << " parent coord unit axis " << axisInParentCoordinateSystem << " axis rotation axis " << glm::axis(axisRotation) << " converted positional theta " << convertedPositionalTheta << " axis angle " << (glm::angle(axisRotation) / PI)*180.0f;
     }
 
     // now we calculate the contribution of the hand rotation relative to the arm
-    //glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
-    glm::quat relativeHandRotation = (elbowPose.inverse() * handPose).rot();
+    glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
+    //glm::quat relativeHandRotation = (elbowPose.inverse() * handPose).rot();
     if (relativeHandRotation.w < 0.0f) {
         relativeHandRotation *= -1.0f;
     }
@@ -1952,6 +1988,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _ulnarRadialThetaRunningAverageLeft = ulnarDeviationTheta;
         _flexThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _twistThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _twistThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * trueTwistTheta;
+        qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
 
     } else {
 
@@ -1973,6 +2010,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _flexThetaRunningAverageRight = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageRight + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _ulnarRadialThetaRunningAverageRight = ulnarDeviationTheta;
     }
+    
 
     // get the correction angle for each axis and add it to the base pole vector theta
     float currentWristCoefficient = 0.0f;
@@ -1991,12 +2029,12 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _lastWristCoefficientLeft = _lastThetaLeft - _lastPositionThetaLeft;
         _lastWristCoefficientLeft += currentWristCoefficient;
         _lastPositionThetaLeft = positionalTheta;
-        _lastThetaLeft = positionalTheta + _lastWristCoefficientLeft;
+        _lastThetaLeft = positionalTheta;// +_lastWristCoefficientLeft;
     } else {
         _lastWristCoefficientRight = _lastThetaRight - _lastPositionThetaRight;
         _lastWristCoefficientRight += currentWristCoefficient;
         _lastPositionThetaRight = positionalTheta;
-        _lastThetaRight = positionalTheta + _lastWristCoefficientRight;
+        _lastThetaRight = positionalTheta;// +_lastWristCoefficientRight;
     }
 
     // limit the correction anatomically possible angles and change to radians

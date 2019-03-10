@@ -68,7 +68,6 @@
 
 using namespace std;
 
-#define HIFI_USE_Q_OS_ANDROID
 const float DEFAULT_REAL_WORLD_FIELD_OF_VIEW_DEGREES = 30.0f;
 
 const float YAW_SPEED_DEFAULT = 100.0f;   // degrees/sec
