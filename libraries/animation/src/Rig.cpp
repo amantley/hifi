@@ -1807,7 +1807,7 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
         currentWristCoefficient += ulnarCorrection;
    // }
         if (left) {
-            qCDebug(animation) << "left ulnar correction "<<ulnarCorrection;
+          //  qCDebug(animation) << "left ulnar correction "<<ulnarCorrection;
         }
 
     return ulnarCorrection;
@@ -1817,15 +1817,18 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
 
 static float computeTwistCompensation(float twistTheta, bool left) {
 
-    const float TWIST_DEADZONE = PI / 2.0f;
+    //const float TWIST_DEADZONE = PI / 2.0f;
+    const float TWIST_DEADZONE = PI;
     float twistCorrection = 0.0f;
 
-    if (fabsf(twistTheta) > TWIST_DEADZONE) {
-        twistCorrection = glm::sign(twistTheta) * ((fabsf(twistTheta) - TWIST_DEADZONE) / PI) * 100.0f;
+    if (twistTheta > TWIST_DEADZONE) {
+        twistCorrection = glm::sign(twistTheta) * ((fabsf(twistTheta) - TWIST_DEADZONE) / PI) * 90.0f;
+    } else if (twistTheta < 0.0f) {
+        twistCorrection = (twistTheta / PI) * 90.0f;
     }
     // limit the twist correction
-    if (fabsf(twistCorrection) > 40.0f) {
-        twistCorrection = glm::sign(twistCorrection) * 40.0f;
+    if (fabsf(twistCorrection) > 30.0f) {
+        twistCorrection = glm::sign(twistCorrection) * 30.0f;
     }
 
     return twistCorrection;
@@ -1890,13 +1893,13 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         unitAxis = Vectors::UNIT_Y;
     }
 
-    if ((armToHand.z < 0.1f) ){//&& (armToHand.y < 0.0f)) {
-        if ((left && armToHand.x > -0.2f) || (!left && armToHand.x < 0.2f)){
-            return false;
-        }
+    //if ((armToHand.z < 0.0f) ){//&& (armToHand.y < 0.0f)) {
+      //  if ((left && armToHand.x > -0.2f) || (!left && armToHand.x < 0.2f)){
+        //    return false;
+        //}
         // turn off the poleVector when the hand is back and down
         //return false;
-    }
+    //}
 
     // get the pole vector theta based on the hand position relative to the shoulder.
     float positionalTheta = getHandPositionTheta(armToHand, defaultArmLength, left);
@@ -1926,15 +1929,16 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     glm::quat axisRotation;
     glm::quat nonAxisRotation;
     swingTwistDecomposition(relativeShoulder.rot(), axisInParentCoordinateSystem, nonAxisRotation, axisRotation);
-    if (!left) {
-        qCDebug(animation) << "the right shoulder pole angle " <<(glm::angle(axisRotation)/PI)*180.0;
-    }
+    
 
     if (axisRotation.w < 0.0f) {
         axisRotation = axisRotation * -1.0f;
     }
     if (nonAxisRotation.w < 0.0f) {
         nonAxisRotation = nonAxisRotation * -1.0f;
+    }
+    if (!left) {
+        qCDebug(animation) << "the right shoulder pole angle " << (glm::angle(axisRotation) / PI)*180.0;
     }
     float convertedPositionalTheta = 0.0f;
     if (left) {
@@ -1948,6 +1952,10 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
 
     float angleSign = glm::sign(glm::dot(glm::axis(axisRotation), axisInParentCoordinateSystem));
     AnimPose positionalAxisRotation(glm::inverse(glm::angleAxis((convertedPositionalTheta / 180.0f)*PI, axisInParentCoordinateSystem)), glm::vec3());
+    if (left) {
+        DebugDraw::getInstance().addMarker("oldpose", axisRotation, handPose.trans(), glm::vec4(1));
+        DebugDraw::getInstance().addMarker("computedpose", glm::inverse(glm::angleAxis((convertedPositionalTheta / 180.0f)*PI, axisInParentCoordinateSystem)), glm::vec3(handPose.trans().x, handPose.trans().y + 0.3f, handPose.trans().z), glm::vec4(1));
+    }
     AnimPose nonAxisPose(nonAxisRotation, glm::vec3());
     AnimPose updatedRelativeBase = nonAxisPose * positionalAxisRotation;
     AnimPose updatedAbsBase = parentShoulderPose * updatedRelativeBase;
@@ -2000,7 +2008,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _ulnarRadialThetaRunningAverageLeft = ulnarDeviationTheta;
         _flexThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _twistThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _twistThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * trueTwistTheta;
-        qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
+        //qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
 
     } else {
 
@@ -2021,6 +2029,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _twistThetaRunningAverageRight = SMOOTHING_COEFFICIENT * _twistThetaRunningAverageRight + (1.0f - SMOOTHING_COEFFICIENT) * trueTwistTheta;
         _flexThetaRunningAverageRight = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageRight + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _ulnarRadialThetaRunningAverageRight = ulnarDeviationTheta;
+        qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
     }
     
 
@@ -2029,11 +2038,11 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     if (left) {
         //currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageLeft, left);
         //currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft, left);
-        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, left);
+        //currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, left);
     } else {
         //currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageRight, left);
         //currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, left);
-        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, left);
+        //currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, left);
     }
 
     // find the previous contribution of the wrist and add the current wrist correction to it
@@ -2042,12 +2051,13 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         //_lastWristCoefficientLeft += currentWristCoefficient;
         //_lastPositionThetaLeft = positionalTheta;
         _lastThetaLeft = positionalTheta + currentWristCoefficient;
-        qCDebug(animation) << "current wrist coeff " << currentWristCoefficient;
+        //qCDebug(animation) << "current wrist coeff " << currentWristCoefficient;
     } else {
         //_lastWristCoefficientRight = _lastThetaRight - _lastPositionThetaRight;
         //_lastWristCoefficientRight += currentWristCoefficient;
         //_lastPositionThetaRight = positionalTheta;
         _lastThetaRight = positionalTheta + currentWristCoefficient;
+        //qCDebug(animation) << "current wrist coeff " << currentWristCoefficient;
     }
 
     // limit the correction anatomically possible angles and change to radians
@@ -2065,8 +2075,8 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         if (_lastThetaLeft > -UPPER_ANATOMICAL_ANGLE) {
             _lastThetaLeft =  -UPPER_ANATOMICAL_ANGLE;
         }
-        if (_lastThetaLeft < lowerBoundary) {
-            _lastThetaLeft = lowerBoundary;
+        if (_lastThetaLeft < -lowerBoundary) {
+            _lastThetaLeft = -lowerBoundary;
         }
         // convert to radians and make 180 0 to match pole vector theta
         //qCDebug(animation) << " last theta " << _lastThetaLeft;
