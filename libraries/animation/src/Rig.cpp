@@ -1747,7 +1747,7 @@ static float getHandPositionTheta(glm::vec3 armToHand, float defaultArmLength, b
     return handPositionTheta;
 }
 
-static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistTheta, bool left) {
+static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistTheta, float flexTheta, bool left) {
     const float ULNAR_BOUNDARY_MINUS = -PI / 7.0f;
     const float ULNAR_BOUNDARY_PLUS = PI / 7.0f;
     float ulnarDiff = 0.0f;
@@ -1767,52 +1767,43 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
         }
 
     }
-    /*
+    
     if (fabsf(ulnarDiff) > 0.0f) {
         float twistCoefficient = 0.0f;
 
         if (left) {
             twistCoefficient = twistTheta;
-            if (twistCoefficient > (PI / 6.0f)) {
-                twistCoefficient = 1.0f;
+            if (fabsf(twistCoefficient) > (PI / 6.0f)) {
+                twistCoefficient = glm::sign(twistCoefficient)*(fabsf(twistCoefficient) - (PI / 6.0f)) / (PI / 3.0f);
+                //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
             }
         } else {
             twistCoefficient = twistTheta;
-            if (twistCoefficient < (-PI / 6.0f)) {
-                twistCoefficient = 1.0f;
+            if (fabsf(twistCoefficient) > (PI / 6.0f)) {
+                twistCoefficient = glm::sign(twistCoefficient)*(fabsf(twistCoefficient) - (PI / 6.0f)) / (PI / 3.0f);
+                //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
             }
 
         }
-        */
-        //if (twistTheta  0.0f) {
-            if (left) {
-                ulnarCorrection += glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * 1.0f;// twistCoefficient;
-            } else {
-                ulnarCorrection += glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * 1.0f;// twistCoefficient;
-            }
-        //} else {
-          //  if (left) {
-           //     ulnarCorrection += glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * twistCoefficient;
-           // } else {
-           //     ulnarCorrection -= glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * twistCoefficient;
-           // }
-       // }
-        if (fabsf(ulnarCorrection) > 100.0f) {
-            ulnarCorrection = glm::sign(ulnarCorrection) * 100.0f;
-        }
-        currentWristCoefficient += ulnarCorrection;
-   // }
+        float flexCoefficient = 1.0f;
+        flexCoefficient = glm::min(1.0f - fabsf(flexTheta)/(PI/3.0f),0.0f);
+        
+
         if (left) {
-          //  qCDebug(animation) << "left ulnar correction "<<ulnarCorrection;
+            ulnarCorrection += glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * twistCoefficient * flexCoefficient;
+        } else {
+            ulnarCorrection += glm::sign(ulnarDiff) * (fabsf(ulnarDiff) / PI) * 180.0f * twistCoefficient * flexCoefficient;
         }
 
+        if (fabsf(ulnarCorrection) > 30.0f) {
+            ulnarCorrection = glm::sign(ulnarCorrection) * 30.0f;
+        }
+    }
     return ulnarCorrection;
-
-
 }
 
 static float computeTwistCompensation(float twistTheta, bool left) {
@@ -2097,11 +2088,11 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     if (left) {
         currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageLeft, left);
         currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft, left);
-        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, left);
+        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, _flexThetaRunningAverageLeft, left);
     } else {
         currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageRight, left);
         currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, left);
-        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, left);
+        currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, _flexThetaRunningAverageRight, left);
     }
 
     // find the previous contribution of the wrist and add the current wrist correction to it
