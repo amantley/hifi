@@ -1773,24 +1773,29 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
 
         if (left) {
             twistCoefficient = twistTheta;
-            if (fabsf(twistCoefficient) > (PI / 6.0f)) {
-                twistCoefficient = glm::sign(twistCoefficient)*(fabsf(twistCoefficient) - (PI / 6.0f)) / (PI / 3.0f);
+            if (fabsf(twistCoefficient) > (PI / 12.0f)) {
+                twistCoefficient = glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 12.0f)) / (PI / 3.0f);
                 //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
             }
         } else {
             twistCoefficient = twistTheta;
-            if (fabsf(twistCoefficient) > (PI / 6.0f)) {
-                twistCoefficient = glm::sign(twistCoefficient)*(fabsf(twistCoefficient) - (PI / 6.0f)) / (PI / 3.0f);
+            if (fabsf(twistCoefficient) > (PI / 12.0f)) {
+                twistCoefficient = -1.0f * glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 12.0f)) / (PI / 3.0f);
                 //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
             }
 
         }
+        if (twistCoefficient > 1.0f) {
+            twistCoefficient = 1.0f;
+        }
         float flexCoefficient = 1.0f;
-        flexCoefficient = glm::min(1.0f - fabsf(flexTheta)/(PI/3.0f),0.0f);
+        float upAndDown = fabsf(flexTheta) / (PI / 2.0f);
+        float diffFromOne = 1.0f - upAndDown;
+        flexCoefficient = glm::max(diffFromOne, 0.0f);
         
 
         if (left) {
@@ -1802,18 +1807,20 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
         if (fabsf(ulnarCorrection) > 30.0f) {
             ulnarCorrection = glm::sign(ulnarCorrection) * 30.0f;
         }
+        qCDebug(animation) << flexTheta << " " << flexCoefficient << " " << diffFromOne << " " << upAndDown << " " << ulnarCorrection << " " << twistCoefficient;
+
     }
     return ulnarCorrection;
 }
 
 static float computeTwistCompensation(float twistTheta, bool left) {
 
-    const float TWIST_DEADZONE = 9.0f * PI / 20.0f;
+    const float TWIST_DEADZONE = 5.0f * PI / 20.0f;
     //const float TWIST_DEADZONE = PI;
     float twistCorrection = 0.0f;
 
     if (fabsf(twistTheta) > TWIST_DEADZONE) {
-        twistCorrection = glm::sign(twistTheta) * ((fabsf(twistTheta) - TWIST_DEADZONE) / PI) * 180.0f;
+        twistCorrection = glm::sign(twistTheta) * ((fabsf(twistTheta) - TWIST_DEADZONE) / PI) * 90.0f;
     }
     // limit the twist correction
     if (fabsf(twistCorrection) > 30.0f) {
@@ -1831,9 +1838,9 @@ static float computeFlexCompensation(float flexTheta, bool left) {
     float currentWristCoefficient = 0.0f;
 
     if (flexTheta > FLEX_BOUNDARY) {
-        flexCorrection = ((flexTheta - FLEX_BOUNDARY) / PI) * 180.0f;
+        flexCorrection = ((flexTheta - FLEX_BOUNDARY) / PI) * 100.0f;
     } else if (flexTheta < EXTEND_BOUNDARY) {
-        flexCorrection = ((flexTheta - EXTEND_BOUNDARY) / PI) * 180.0f;
+        flexCorrection = ((flexTheta - EXTEND_BOUNDARY) / PI) * 100.0f;
     }
     if (fabsf(flexCorrection) > 175.0f) {
         flexCorrection = glm::sign(flexCorrection) * 175.0f;
@@ -2195,6 +2202,8 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     } else {
         poleVector = armAxisPose.rot()*testRotTheta*Vectors::UNIT_NEG_X;
     }
+    poleVector = glm::slerp(poleVector, _lastPoleVector, 0.2f);
+    _lastPoleVector = poleVector;
     glm::vec3 poleVector2 = armAxisPose * glm::normalize(thetaVector2);
     if (left) {
        // qCDebug(animation) << "the up vector is " << upRot << " the x axis " << glm::inverse(armAxisPose.rot()) * glm::normalize(thetaVector) <<  " pole angle " << glm::angle(axisRotation6) << " thetaRadians " << thetaRadians << " theta pole vector " << armAxisPose.rot()*testRotTheta*Vectors::UNIT_X;
