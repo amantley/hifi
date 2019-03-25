@@ -1730,7 +1730,7 @@ static float getHandPositionTheta(glm::vec3 armToHand, float defaultArmLength, b
     }
 
     handPositionTheta = xFactor + yFactor + zFactor;
-
+   
     const float LOWER_ANATOMICAL_ANGLE = 175.0f;
     const float UPPER_ANATOMICAL_ANGLE = 50.0f;
     if (handPositionTheta > LOWER_ANATOMICAL_ANGLE) {
@@ -1743,6 +1743,8 @@ static float getHandPositionTheta(glm::vec3 armToHand, float defaultArmLength, b
     if (left) {
         handPositionTheta *= -1.0f;
     }
+
+    qCDebug(animation) << "xfactor" << xFactor << "yfactor" << yFactor << "zfactor" << zFactor << "total" << handPositionTheta;
 
     return handPositionTheta;
 }
@@ -1773,16 +1775,16 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
 
         if (left) {
             twistCoefficient = twistTheta;
-            if (fabsf(twistCoefficient) > (PI / 12.0f)) {
-                twistCoefficient = glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 12.0f)) / (PI / 3.0f);
+            if (fabsf(twistCoefficient) > (PI / 3.0f)) {
+                twistCoefficient = glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 3.0f)) / (PI / 6.0f);
                 //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
             }
         } else {
             twistCoefficient = twistTheta;
-            if (fabsf(twistCoefficient) > (PI / 12.0f)) {
-                twistCoefficient = -1.0f * glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 12.0f)) / (PI / 3.0f);
+            if (fabsf(twistCoefficient) > (PI / 3.0f)) {
+                twistCoefficient = -1.0f * glm::sign(twistCoefficient) * (fabsf(twistCoefficient) - (PI / 3.0f)) / (PI / 6.0f);
                 //twistCoefficient = 1.0f;
             } else {
                 twistCoefficient = 0.0f;
@@ -1793,9 +1795,9 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
             twistCoefficient = 1.0f;
         }
         float flexCoefficient = 1.0f;
-        float upAndDown = fabsf(flexTheta) / (PI / 2.0f);
-        float diffFromOne = 1.0f - upAndDown;
-        flexCoefficient = glm::max(diffFromOne, 0.0f);
+        //float upAndDown = fabsf(flexTheta) / (PI / 2.0f);
+        //float diffFromOne = 1.0f - upAndDown;
+        //flexCoefficient = glm::max(diffFromOne, 0.0f);
         
 
         if (left) {
@@ -1807,7 +1809,7 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
         if (fabsf(ulnarCorrection) > 30.0f) {
             ulnarCorrection = glm::sign(ulnarCorrection) * 30.0f;
         }
-        qCDebug(animation) << flexTheta << " " << flexCoefficient << " " << diffFromOne << " " << upAndDown << " " << ulnarCorrection << " " << twistCoefficient;
+       // qCDebug(animation) << flexTheta << " " << flexCoefficient << " " << diffFromOne << " " << upAndDown << " " << ulnarCorrection << " " << twistCoefficient;
 
     }
     return ulnarCorrection;
@@ -1815,7 +1817,7 @@ static float computeUlnarRadialCompensation(float ulnarRadialTheta, float twistT
 
 static float computeTwistCompensation(float twistTheta, bool left) {
 
-    const float TWIST_DEADZONE = 5.0f * PI / 20.0f;
+    const float TWIST_DEADZONE = 9.0f * PI / 20.0f;
     //const float TWIST_DEADZONE = PI;
     float twistCorrection = 0.0f;
 
@@ -1830,20 +1832,24 @@ static float computeTwistCompensation(float twistTheta, bool left) {
     return twistCorrection;
 }
 
-static float computeFlexCompensation(float flexTheta, bool left) {
+static float computeFlexCompensation(float flexTheta, float twistTheta, bool left) {
 
-    const float FLEX_BOUNDARY = PI / 12.0f;
-    const float EXTEND_BOUNDARY = -PI / 12.0f;
+    const float FLEX_BOUNDARY = PI / 10.0f;
+    const float EXTEND_BOUNDARY = -PI / 10.0f;
     float flexCorrection = 0.0f;
     float currentWristCoefficient = 0.0f;
+    float dynamicFlexBoundary = FLEX_BOUNDARY * (((PI / 2.0f) - fabsf(twistTheta)) / (PI / 2.0f));
+    float dynamicExtendBoundary = EXTEND_BOUNDARY * (((PI / 2.0f) - fabsf(twistTheta)) / (PI / 2.0f));
 
-    if (flexTheta > FLEX_BOUNDARY) {
-        flexCorrection = ((flexTheta - FLEX_BOUNDARY) / PI) * 100.0f;
-    } else if (flexTheta < EXTEND_BOUNDARY) {
-        flexCorrection = ((flexTheta - EXTEND_BOUNDARY) / PI) * 100.0f;
-    }
-    if (fabsf(flexCorrection) > 175.0f) {
-        flexCorrection = glm::sign(flexCorrection) * 175.0f;
+    if (fabsf(twistTheta) < (PI / 2.0f)) {
+        if (flexTheta > FLEX_BOUNDARY) {
+            flexCorrection = (((PI / 2.0f) - fabsf(twistTheta))/ (PI / 2.0f)) * ((flexTheta - FLEX_BOUNDARY) / PI) * 180.0f;
+        } else if (flexTheta < EXTEND_BOUNDARY) {
+            flexCorrection = (((PI / 2.0f) - fabsf(twistTheta)) / (PI / 2.0f)) * ((flexTheta - EXTEND_BOUNDARY) / PI) * 180.0f;
+        }
+        if (fabsf(flexCorrection) > 175.0f) {
+            flexCorrection = glm::sign(flexCorrection) * 175.0f;
+        }
     }
     
     if (left) {
@@ -1940,18 +1946,20 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     glm::quat deltaReset = glm::angleAxis(thetaReset, unitAxis);
     glm::quat relBaseRot = glm::inverse(parentShoulderPose.rot()) * deltaReset * shoulderPose.rot();
     if (!left) {
-        qCDebug(animation) << " the dot of the start pole and the elbow pointer " << dot;
-        qCDebug(animation) << " right shoulder after reset " << relBaseRot;
+        //qCDebug(animation) << " the dot of the start pole and the elbow pointer " << dot;
+        //qCDebug(animation) << " right shoulder after reset " << relBaseRot;
     }
 
-    if (left) {
-       // DebugDraw::getInstance().addMarker("oldpose", axisRotation, handPose.trans(), glm::vec4(1));
-       // DebugDraw::getInstance().addMarker("computedpose", glm::inverse(glm::angleAxis((convertedPositionalTheta / 180.0f)*PI, axisInParentCoordinateSystem)), glm::vec3(handPose.trans().x, handPose.trans().y + 0.3f, handPose.trans().z), glm::vec4(1));
-    }
+    
  
     AnimPose updatedAbsBase = parentShoulderPose * AnimPose(relBaseRot,glm::vec3());
     AnimPose relMid = shoulderPose.inverse() * elbowPose;
     AnimPose newAbsMid = updatedAbsBase * relMid;
+
+    if (left) {
+      //  DebugDraw::getInstance().addMarker("oldpose", handPose.rot(), handPose.trans(), glm::vec4(1));
+      //  DebugDraw::getInstance().addMarker("computedpose", newAbsMid.rot(), glm::vec3(handPose.trans().x, handPose.trans().y + 0.3f, handPose.trans().z), glm::vec4(1));
+    }
 
     // now we calculate the contribution of the hand rotation relative to the arm
     glm::quat relativeHandRotation = (newAbsMid.inverse() * handPose).rot();
@@ -1963,10 +1971,31 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     // find the thetas, hand relative to avatar arm
     const glm::vec3 ULNAR_ROTATION_AXIS = Vectors::UNIT_Z;
     const glm::vec3 TWIST_ROTATION_AXIS = Vectors::UNIT_Y;
-    const glm::vec3 FLEX__ROTATION_AXIS = Vectors::UNIT_X;
+    const glm::vec3 FLEX_ROTATION_AXIS = Vectors::UNIT_X;
 
-    float ulnarDeviationTheta = getAxisThetaFromRotation(ULNAR_ROTATION_AXIS, relativeHandRotation);
-    float flexTheta = getAxisThetaFromRotation(FLEX__ROTATION_AXIS, relativeHandRotation);
+    glm::quat twistAxis;
+    glm::quat nonTwistAxis;
+    swingTwistDecomposition(relativeHandRotation, TWIST_ROTATION_AXIS, nonTwistAxis, twistAxis);
+    if (nonTwistAxis.w < 0.0f) {
+        nonTwistAxis *= -1.0f;
+    }
+    nonTwistAxis = glm::inverse(twistAxis) * nonTwistAxis * twistAxis;
+
+    glm::quat flexAxis;
+    glm::quat nonFlexAxis;
+    swingTwistDecomposition(nonTwistAxis, FLEX_ROTATION_AXIS, nonFlexAxis, flexAxis);
+    if (flexAxis.w < 0.0f) {
+        flexAxis *= -1.0f;
+    }
+
+    if (left) {
+        DebugDraw::getInstance().addMarker("handpose", handPose.rot(), handPose.trans(), glm::vec4(1));
+        DebugDraw::getInstance().addMarker("twist", twistAxis, glm::vec3(handPose.trans().x, handPose.trans().y + 0.3f, handPose.trans().z), glm::vec4(1));
+        DebugDraw::getInstance().addMarker("nonTwist", nonTwistAxis, glm::vec3(handPose.trans().x, handPose.trans().y + 0.6f, handPose.trans().z), glm::vec4(1));
+    }
+
+    float ulnarDeviationTheta = getAxisThetaFromRotation(ULNAR_ROTATION_AXIS, nonTwistAxis);
+    float flexTheta = getAxisThetaFromRotation(FLEX_ROTATION_AXIS, nonTwistAxis);
     float trueTwistTheta = getAxisThetaFromRotation(TWIST_ROTATION_AXIS, relativeHandRotation);
 
     const float HALFWAY_ANGLE = PI / 2.0f;
@@ -1990,7 +2019,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _ulnarRadialThetaRunningAverageLeft = ulnarDeviationTheta;
         _flexThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _twistThetaRunningAverageLeft = SMOOTHING_COEFFICIENT * _twistThetaRunningAverageLeft + (1.0f - SMOOTHING_COEFFICIENT) * trueTwistTheta;
-        //qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
+        qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
 
     } else {
 
@@ -2011,7 +2040,7 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
         _twistThetaRunningAverageRight = SMOOTHING_COEFFICIENT * _twistThetaRunningAverageRight + (1.0f - SMOOTHING_COEFFICIENT) * trueTwistTheta;
         _flexThetaRunningAverageRight = SMOOTHING_COEFFICIENT * _flexThetaRunningAverageRight + (1.0f - SMOOTHING_COEFFICIENT) * flexTheta;
         _ulnarRadialThetaRunningAverageRight = ulnarDeviationTheta;
-        qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
+        //qCDebug(animation) << "twist " << trueTwistTheta << " flex " << flexTheta << " ulnar " << ulnarDeviationTheta;
     }
 
 
@@ -2019,11 +2048,11 @@ bool Rig::calculateElbowPoleVectorOptimized(int handIndex, int elbowIndex, int s
     float currentWristCoefficient = 0.0f;
     if (left) {
         currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageLeft, left);
-        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft, left);
+        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageLeft,_twistThetaRunningAverageLeft, left);
         currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageLeft, _twistThetaRunningAverageLeft, _flexThetaRunningAverageLeft, left);
     } else {
         currentWristCoefficient += computeTwistCompensation(_twistThetaRunningAverageRight, left);
-        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, left);
+        currentWristCoefficient += computeFlexCompensation(_flexThetaRunningAverageRight, _twistThetaRunningAverageLeft, left);
         currentWristCoefficient += computeUlnarRadialCompensation(_ulnarRadialThetaRunningAverageRight, _twistThetaRunningAverageRight, _flexThetaRunningAverageRight, left);
     }
 
