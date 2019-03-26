@@ -119,7 +119,9 @@ public:
     void restoreAnimation();
     
     void overrideHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
+    void overrideLeftHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
     void restoreHandAnimation();
+    void restoreLeftHandAnimation();
 
     void overrideNetworkAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
     void triggerNetworkRole(const QString& role);
@@ -415,10 +417,11 @@ protected:
     UserAnimState _userAnimState;
     NetworkAnimState _networkAnimState;
     HandAnimState _handAnimState;
+    HandAnimState _leftHandAnimState;
     std::map<QString, RoleAnimState> _roleAnimStates;
 
     float _leftHandOverlayAlpha { 0.0f };
-    float _rightHandOverlayAlpha { 1.0f };
+    float _rightHandOverlayAlpha { 0.0f };
 
     SimpleMovingAverage _averageForwardSpeed { 10 };
     SimpleMovingAverage _averageLateralSpeed { 10 };

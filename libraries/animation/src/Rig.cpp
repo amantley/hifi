@@ -196,6 +196,44 @@ void Rig::overrideHandAnimation(const QString& url, float fps, bool loop, float 
 
 }
 
+void Rig::overrideLeftHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
+    HandAnimState::ClipNodeEnum clipNodeEnum;
+    if (_leftHandAnimState.clipNodeEnum == HandAnimState::None || _leftHandAnimState.clipNodeEnum == HandAnimState::B) {
+        clipNodeEnum = HandAnimState::A;
+    } else {
+        clipNodeEnum = HandAnimState::B;
+    }
+
+    if (_animNode) {
+        std::shared_ptr<AnimClip> clip;
+        if (clipNodeEnum == HandAnimState::A) {
+            clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("leftHandAnimA"));
+        } else {
+            clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("leftHandAnimB"));
+        }
+
+        if (clip) {
+            // set parameters
+            clip->setLoopFlag(loop);
+            clip->setStartFrame(firstFrame);
+            clip->setEndFrame(lastFrame);
+            const float REFERENCE_FRAMES_PER_SECOND = 30.0f;
+            float timeScale = fps / REFERENCE_FRAMES_PER_SECOND;
+            clip->setTimeScale(timeScale);
+            clip->loadURL(url);
+        }
+    }
+
+    // store current hand anim state.
+    _leftHandAnimState = { clipNodeEnum, url, fps, loop, firstFrame, lastFrame };
+
+    // notify the handAnimStateMachine the desired state.
+    _animVars.set("leftHandAnimNone", false);
+    _animVars.set("leftHandAnimA", clipNodeEnum == HandAnimState::A);
+    _animVars.set("leftHandAnimB", clipNodeEnum == HandAnimState::B);
+
+}
+
 void Rig::restoreHandAnimation() {
     if (_handAnimState.clipNodeEnum != HandAnimState::None) {
         _handAnimState.clipNodeEnum = HandAnimState::None;
@@ -205,9 +243,19 @@ void Rig::restoreHandAnimation() {
         _animVars.set("handAnimA", false);
         _animVars.set("handAnimB", false);
     }
-
-
 }
+
+void Rig::restoreLeftHandAnimation() {
+    if (_leftHandAnimState.clipNodeEnum != HandAnimState::None) {
+        _leftHandAnimState.clipNodeEnum = HandAnimState::None;
+
+        // notify the handAnimStateMachine the desired state.
+        _animVars.set("leftHandAnimNone", true);
+        _animVars.set("leftHandAnimA", false);
+        _animVars.set("leftHandAnimB", false);
+    }
+}
+
 
 void Rig::overrideNetworkAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
 
