@@ -402,7 +402,7 @@ public:
      * }, 3000);
      */
     Q_INVOKABLE void overrideAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
-    Q_INVOKABLE void overrideHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
+    Q_INVOKABLE void overrideHandAnimation(bool isLeft, const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
     Q_INVOKABLE void overrideLeftHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
 
     /**jsdoc
@@ -420,7 +420,7 @@ public:
      * }, 3000);
      */
     Q_INVOKABLE void restoreAnimation();
-    Q_INVOKABLE void restoreHandAnimation();
+    Q_INVOKABLE void restoreHandAnimation(bool isLeft);
     Q_INVOKABLE void restoreLeftHandAnimation();
 
     /**jsdoc
