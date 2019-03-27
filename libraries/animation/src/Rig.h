@@ -414,7 +414,7 @@ protected:
 
     UserAnimState _userAnimState;
     NetworkAnimState _networkAnimState;
-    HandAnimState _handAnimState;
+    HandAnimState _rightHandAnimState;
     HandAnimState _leftHandAnimState;
     std::map<QString, RoleAnimState> _roleAnimStates;
 

@@ -378,14 +378,12 @@ void Rig::overrideHandAnimation(bool isLeft, const QString& url, float fps, bool
         } else {
             clipNodeEnum = HandAnimState::B;
         }
-        
     } else {
-        if (_handAnimState.clipNodeEnum == HandAnimState::None || _handAnimState.clipNodeEnum == HandAnimState::B) {
+        if (_rightHandAnimState.clipNodeEnum == HandAnimState::None || _rightHandAnimState.clipNodeEnum == HandAnimState::B) {
             clipNodeEnum = HandAnimState::A;
         } else {
             clipNodeEnum = HandAnimState::B;
         }
-
     }
 
     if (_animNode) {
@@ -398,9 +396,9 @@ void Rig::overrideHandAnimation(bool isLeft, const QString& url, float fps, bool
             }
         } else {
             if (clipNodeEnum == HandAnimState::A) {
-                clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("handAnimA"));
+                clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("rightHandAnimA"));
             } else {
-                clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("handAnimB"));
+                clip = std::dynamic_pointer_cast<AnimClip>(_animNode->findByName("rightHandAnimB"));
             }
         }
 
@@ -425,10 +423,10 @@ void Rig::overrideHandAnimation(bool isLeft, const QString& url, float fps, bool
         _animVars.set("leftHandAnimB", clipNodeEnum == HandAnimState::B);
     } else {
         // store current hand anim state.
-        _handAnimState = { clipNodeEnum, url, fps, loop, firstFrame, lastFrame };
-        _animVars.set("handAnimNone", false);
-        _animVars.set("handAnimA", clipNodeEnum == HandAnimState::A);
-        _animVars.set("handAnimB", clipNodeEnum == HandAnimState::B);
+        _rightHandAnimState = { clipNodeEnum, url, fps, loop, firstFrame, lastFrame };
+        _animVars.set("rightHandAnimNone", false);
+        _animVars.set("rightHandAnimA", clipNodeEnum == HandAnimState::A);
+        _animVars.set("rightHandAnimB", clipNodeEnum == HandAnimState::B);
     }
 }
 
@@ -442,17 +440,15 @@ void Rig::restoreHandAnimation(bool isLeft) {
             _animVars.set("leftHandAnimA", false);
             _animVars.set("leftHandAnimB", false);
         }
-        
     } else {
-        if (_handAnimState.clipNodeEnum != HandAnimState::None) {
-            _handAnimState.clipNodeEnum = HandAnimState::None;
+        if (_rightHandAnimState.clipNodeEnum != HandAnimState::None) {
+            _rightHandAnimState.clipNodeEnum = HandAnimState::None;
 
             // notify the handAnimStateMachine the desired state.
-            _animVars.set("handAnimNone", true);
-            _animVars.set("handAnimA", false);
-            _animVars.set("handAnimB", false);
+            _animVars.set("rightHandAnimNone", true);
+            _animVars.set("rightHandAnimA", false);
+            _animVars.set("rightHandAnimB", false);
         }
-
     }
 }
 

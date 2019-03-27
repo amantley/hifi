@@ -194,43 +194,43 @@
                                                                 },
                                                                 "children": [
                                                                     {
-                                                                        "id": "handStateMachine",
+                                                                        "id": "rightHandStateMachine",
                                                                         "type": "stateMachine",
                                                                         "data": {
-                                                                            "currentState": "handAnimNone",
+                                                                            "currentState": "rightHandAnimNone",
                                                                             "states": [
                                                                                 {
-                                                                                    "id": "handAnimNone",
+                                                                                    "id": "rightHandAnimNone",
                                                                                     "interpTarget": 1,
                                                                                     "interpDuration": 3,
                                                                                     "transitions": [
-                                                                                        { "var": "handAnimA", "state": "handAnimA" },
-                                                                                        { "var": "handAnimB", "state": "handAnimB" }
+                                                                                        { "var": "rightHandAnimA", "state": "rightHandAnimA" },
+                                                                                        { "var": "rightHandAnimB", "state": "rightHandAnimB" }
                                                                                     ]
                                                                                 },
                                                                                 {
-                                                                                    "id": "handAnimA",
+                                                                                    "id": "rightHandAnimA",
                                                                                     "interpTarget": 1,
                                                                                     "interpDuration": 3,
                                                                                     "transitions": [
-                                                                                        { "var": "handAnimNone", "state": "handAnimNone" },
-                                                                                        { "var": "handAnimB", "state": "handAnimB" }
+                                                                                        { "var": "rightHandAnimNone", "state": "rightHandAnimNone" },
+                                                                                        { "var": "rightHandAnimB", "state": "rightHandAnimB" }
                                                                                     ]
                                                                                 },
                                                                                 {
-                                                                                    "id": "handAnimB",
+                                                                                    "id": "rightHandAnimB",
                                                                                     "interpTarget": 1,
                                                                                     "interpDuration": 3,
                                                                                     "transitions": [
-                                                                                        { "var": "handAnimNone", "state": "handAnimNone" },
-                                                                                        { "var": "handAnimA", "state": "handAnimA" }
+                                                                                        { "var": "rightHandAnimNone", "state": "rightHandAnimNone" },
+                                                                                        { "var": "rightHandAnimA", "state": "rightHandAnimA" }
                                                                                     ]
                                                                                 }
                                                                             ]
                                                                         },
                                                                         "children": [
                                                                             {
-                                                                                "id": "handAnimNone",
+                                                                                "id": "rightHandAnimNone",
                                                                                 "type": "stateMachine",
                                                                                 "data": {
                                                                                     "currentState": "rightHandGrasp",
@@ -453,7 +453,7 @@
                                                                                 ]
                                                                             },
                                                                             {
-                                                                                "id": "handAnimA",
+                                                                                "id": "rightHandAnimA",
                                                                                 "type": "clip",
                                                                                 "data": {
                                                                                     "url": "qrc:///avatar/animations/touch_thumb_point_open_right.fbx",
@@ -465,7 +465,7 @@
                                                                                 "children": []
                                                                             },
                                                                             {
-                                                                                "id": "handAnimB",
+                                                                                "id": "rightHandAnimB",
                                                                                 "type": "clip",
                                                                                 "data": {
                                                                                     "url": "qrc:///avatar/animations/touch_thumb_point_open_right.fbx",
