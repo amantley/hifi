@@ -119,9 +119,7 @@ public:
     void restoreAnimation();
     
     void overrideHandAnimation(bool isLeft, const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
-    void overrideLeftHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
     void restoreHandAnimation(bool isLeft);
-    void restoreLeftHandAnimation();
 
     void overrideNetworkAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame);
     void triggerNetworkRole(const QString& role);

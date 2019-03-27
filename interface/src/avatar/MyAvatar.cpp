@@ -1197,29 +1197,12 @@ void MyAvatar::overrideHandAnimation(bool isLeft, const QString& url, float fps,
     _skeletonModel->getRig().overrideHandAnimation(isLeft, url, fps, loop, firstFrame, lastFrame);
 }
 
-void MyAvatar::overrideLeftHandAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
-    if (QThread::currentThread() != thread()) {
-        QMetaObject::invokeMethod(this, "overrideLeftHandAnimation", Q_ARG(const QString&, url), Q_ARG(float, fps),
-            Q_ARG(bool, loop), Q_ARG(float, firstFrame), Q_ARG(float, lastFrame));
-        return;
-    }
-    _skeletonModel->getRig().overrideLeftHandAnimation(url, fps, loop, firstFrame, lastFrame);
-}
-
 void MyAvatar::restoreAnimation() {
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "restoreAnimation");
         return;
     }
     _skeletonModel->getRig().restoreAnimation();
-}
-
-void MyAvatar::restoreLeftHandAnimation() {
-    if (QThread::currentThread() != thread()) {
-        QMetaObject::invokeMethod(this, "restoreLeftHandAnimation");
-        return;
-    }
-    _skeletonModel->getRig().restoreLeftHandAnimation();
 }
 
 void MyAvatar::restoreHandAnimation(bool isLeft) {
