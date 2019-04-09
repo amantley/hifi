@@ -24,6 +24,7 @@ enum class AnimNodeType {
     BlendLinearMove,
     Overlay,
     StateMachine,
+    RandomSwitchStateMachine,
     Manipulator,
     InverseKinematics,
     DefaultPose,
