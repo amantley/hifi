@@ -30,6 +30,12 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1) {
         // get a random number and decide which motion to choose.
         float dice = randFloatInRange(0.0f, 1.0f);
+        // to do: fix this for tomorrow.
+        for (const RandomSwitchState::Pointer& randState : _randomStates) {
+            if (dice < randState->getPriority()) {
+                desiredStateID = randState->getID();
+            }
+        }
         if (dice < 0.5f) {
             // choose one
             desiredStateID = "standing1";

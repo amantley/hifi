@@ -84,6 +84,7 @@ protected:
 		void setInterpTypeVar(const QString& interpTypeVar) { _interpTypeVar = interpTypeVar; }
 
 		int getChildIndex() const { return _childIndex; }
+        float getPriority() const { return _priority; }
 		const QString& getID() const { return _id; }
 
 	protected:
