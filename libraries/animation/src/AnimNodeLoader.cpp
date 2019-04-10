@@ -837,6 +837,8 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
         READ_FLOAT(interpTarget, stateObj, nodeId, jsonUrl, false);
         READ_FLOAT(interpDuration, stateObj, nodeId, jsonUrl, false);
         READ_OPTIONAL_STRING(interpType, stateObj);
+        READ_FLOAT(priority, stateObj, nodeId, jsonUrl, false);
+        READ_BOOL(resume, stateObj, nodeId, jsonUrl, false);
 
         READ_OPTIONAL_STRING(interpTargetVar, stateObj);
         READ_OPTIONAL_STRING(interpDurationVar, stateObj);
@@ -857,7 +859,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
             }
         }
 
-        auto randomStatePtr = std::make_shared<AnimRandomSwitch::RandomSwitchState>(id, iter->second, interpTarget, interpDuration, interpTypeEnum);
+        auto randomStatePtr = std::make_shared<AnimRandomSwitch::RandomSwitchState>(id, iter->second, interpTarget, interpDuration, interpTypeEnum, priority, resume);
         assert(randomStatePtr);
 
         if (!interpTargetVar.isEmpty()) {

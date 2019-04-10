@@ -391,6 +391,7 @@ protected:
     UserAnimState _userAnimState;
     NetworkAnimState _networkAnimState;
     std::map<QString, RoleAnimState> _roleAnimStates;
+    int _framesAnimatedThisSession { 0 };
 
     float _leftHandOverlayAlpha { 0.0f };
     float _rightHandOverlayAlpha { 0.0f };

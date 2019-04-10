@@ -69,12 +69,14 @@ protected:
 			RandomSwitchState::Pointer _randomSwitchState;
 		};
 
-		RandomSwitchState(const QString& id, int childIndex, float interpTarget, float interpDuration, InterpType interpType) :
+		RandomSwitchState(const QString& id, int childIndex, float interpTarget, float interpDuration, InterpType interpType, float priority, bool resume) :
 			_id(id),
 			_childIndex(childIndex),
 			_interpTarget(interpTarget),
 			_interpDuration(interpDuration),
-			_interpType(interpType) {
+			_interpType(interpType),
+            _priority(priority),
+            _resume(resume){
 		}
 
 		void setInterpTargetVar(const QString& interpTargetVar) { _interpTargetVar = interpTargetVar; }
@@ -88,6 +90,8 @@ protected:
 
 		void setInterpTarget(float interpTarget) { _interpTarget = interpTarget; }
 		void setInterpDuration(float interpDuration) { _interpDuration = interpDuration; }
+        void setPriority(float priority) { _priority = priority; }
+        void setResumeFlag(bool resume) { _resume = resume; }
 
 		void addTransition(const Transition& transition) { _transitions.push_back(transition); }
 
@@ -96,6 +100,8 @@ protected:
 		float _interpTarget;  // frames
 		float _interpDuration; // frames
 		InterpType _interpType;
+        float _priority {0.0f};
+        bool _resume {false};
 
 		QString _interpTargetVar;
 		QString _interpDurationVar;
@@ -132,6 +138,7 @@ protected:
 
 	AnimPoseVec _poses;
 
+    int _framesActive { 0 };
 	// interpolation state
 	bool _duringInterp = false;
 	InterpType _interpType{ InterpType::SnapshotPrev };

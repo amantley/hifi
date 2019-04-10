@@ -24,7 +24,26 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
 	float parentDebugAlpha = context.getDebugAlpha(_id);
 
-	QString desiredStateID = animVars.lookup(_currentStateVar, _currentState->getID());
+    //qCDebug(animation) << "frames active " << _framesActive << " frames in session " << context.getFramesAnimatedThisSession();
+    QString desiredStateID = _currentState->getID();
+    //QString previousState = animVars.lookup(_currentStateVar, _currentState->getID());
+    if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1) {
+        // get a random number and decide which motion to choose.
+        float dice = randFloatInRange(0.0f, 1.0f);
+        if (dice < 0.5f) {
+            // choose one
+            desiredStateID = "standing1";
+            qCDebug(animation) << _currentState->getID() << "chose stand ";
+        } else {
+            // choose other
+            desiredStateID = "standing2";
+            qCDebug(animation) << _currentState->getID() << "chose talk ";
+        }
+
+    }
+    _framesActive = context.getFramesAnimatedThisSession();
+
+	//QString desiredStateID = animVars.lookup(_currentStateVar, _currentState->getID());
 	if (_currentState->getID() != desiredStateID) {
 		// switch states
 		bool foundState = false;
@@ -51,6 +70,7 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
 	assert(currentStateNode);
 
 	if (_duringInterp) {
+       // qCDebug(animation) << "interping ";
 		_alpha += _alphaVel * dt;
 		if (_alpha < 1.0f) {
 			AnimPoseVec* nextPoses = nullptr;
@@ -148,7 +168,7 @@ AnimRandomSwitch::RandomSwitchState::Pointer AnimRandomSwitch::evaluateTransitio
 	assert(_currentState);
 	for (auto& transition : _currentState->_transitions) {
 		if (animVars.lookup(transition._var, false)) {
-			return transition._randomSwitchState;
+			//return transition._randomSwitchState;
 		}
 	}
 	return _currentState;
