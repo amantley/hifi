@@ -85,6 +85,7 @@ protected:
 
 		int getChildIndex() const { return _childIndex; }
         float getPriority() const { return _priority; }
+        bool getResume() const { return _resume; }
 		const QString& getID() const { return _id; }
 
 	protected:
@@ -131,7 +132,8 @@ protected:
 
 	void addState(RandomSwitchState::Pointer randomState);
 
-	void switchState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
+	void switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
+    void initRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
 	RandomSwitchState::Pointer evaluateTransitions(const AnimVariantMap& animVars) const;
 
 	// for AnimDebugDraw rendering
