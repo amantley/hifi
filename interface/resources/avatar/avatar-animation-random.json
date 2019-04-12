@@ -937,6 +937,7 @@
                                                                                                 "type": "randomSwitchStateMachine",
                                                                                                 "data": {
                                                                                                     "currentState": "standing1",
+                                                                                                    "triggerRandomSwitch": "randomIdleSwitch",
                                                                                                     "states": [
                                                                                                         {
                                                                                                             "id": "standing1",

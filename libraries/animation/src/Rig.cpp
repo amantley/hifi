@@ -1399,6 +1399,10 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
         DETAILED_PERFORMANCE_TIMER("handleTriggers");
 
         ++_framesAnimatedThisSession;
+        if (_framesAnimatedThisSession%700 == 0) {
+            _animVars.set("randomIdleSwitch", true);
+            qCDebug(animation) << "triggering the random idle";
+        }
         updateAnimationStateHandlers();
         _animVars.setRigToGeometryTransform(_rigToGeometryTransform);
         if (_networkNode) {

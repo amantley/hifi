@@ -129,10 +129,12 @@ public:
 protected:
 
 	void setCurrentState(RandomSwitchState::Pointer randomState);
+    void setTriggerRandomSwitchVar(const QString& triggerRandomSwitchVar) { _triggerRandomSwitchVar = triggerRandomSwitchVar; }
+    void addToPrioritySum(float priority) { _totalPriorities += priority };
 
 	void addState(RandomSwitchState::Pointer randomState);
 
-	void switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
+	void switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState, bool shouldInterp);
     void initRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
 	RandomSwitchState::Pointer evaluateTransitions(const AnimVariantMap& animVars) const;
 
@@ -149,12 +151,14 @@ protected:
 	float _alpha = 0.0f;
 	AnimPoseVec _prevPoses;
 	AnimPoseVec _nextPoses;
+    float _totalPriorities { 0.0f };
 
 	RandomSwitchState::Pointer _currentState;
 	RandomSwitchState::Pointer _previousState;
 	std::vector<RandomSwitchState::Pointer> _randomStates;
 
 	QString _currentStateVar;
+    QString _triggerRandomSwitchVar;
 
 private:
 	// no copies

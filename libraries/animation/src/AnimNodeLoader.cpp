@@ -806,6 +806,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
     assert(smNode);
 
     READ_STRING(currentState, jsonObj, nodeId, jsonUrl, false);
+    READ_STRING(triggerRandomSwitch, jsonObj, nodeId, jsonUrl, false);
 
     auto statesValue = jsonObj.value("states");
     if (!statesValue.isArray()) {
@@ -860,6 +861,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
         }
 
         auto randomStatePtr = std::make_shared<AnimRandomSwitch::RandomSwitchState>(id, iter->second, interpTarget, interpDuration, interpTypeEnum, priority, resume);
+        smNode->addToPrioritySum(priority);
         assert(randomStatePtr);
 
         if (!interpTargetVar.isEmpty()) {
@@ -914,6 +916,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
         qCCritical(animation) << "AnimNodeLoader, bad currentState =" << currentState << "could not find child node" << "id =" << nodeId;
     }
     smNode->setCurrentState(iter->second);
+    smNode->setTriggerRandomSwitchVar(triggerRandomSwitch);
 
     return true;
 }
