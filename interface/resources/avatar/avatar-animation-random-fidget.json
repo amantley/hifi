@@ -928,36 +928,34 @@
                                                                                         "children": [
                                                                                             {
                                                                                                 "id": "idleStand",
-                                                                                                "type": "randomSwitchStateMachine",
+                                                                                                "type": "stateMachine",
                                                                                                 "data": {
-                                                                                                    "currentState": "standing1",
-                                                                                                    "triggerRandomSwitch": "randomIdleSwitch",
+                                                                                                    "currentState": "masterIdle",
                                                                                                     "states": [
                                                                                                         {
-                                                                                                            "id": "standing1",
+                                                                                                            "id": "masterIdle",
                                                                                                             "interpTarget": 6,
                                                                                                             "interpDuration": 10,
-                                                                                                            "priority": 0.5,
-                                                                                                            "resume": false,
                                                                                                             "transitions": [
-                                                                                                                { "var": "isStanding2", "randomSwitchState": "standing2" }
+                                                                                                                { "var": "timeToFidget", "state": "fidget" }
                                                                                                             ]
                                                                                                         },
                                                                                                         {
-                                                                                                            "id": "standing2",
-                                                                                                            "interpTarget": 6,
-                                                                                                            "interpDuration": 10,
-                                                                                                            "priority": 0.5,
-                                                                                                            "resume": false,
+                                                                                                            "id": "fidget",
+                                                                                                            "interpTarget": 2,
+                                                                                                            "interpDuration": 3,
                                                                                                             "transitions": [
-                                                                                                                { "var": "isStanding1", "randomSwitchState": "standing1" }
+                                                                                                                { "var": "movement1OnDone", "state": "masterIdle" },
+                                                                                                                { "var": "movement2OnDone", "state": "masterIdle" },
+                                                                                                                { "var": "altIdle1OnDone", "state": "masterIdle" },
+                                                                                                                { "var": "altIdle2OnDone", "state": "masterIdle" }
                                                                                                             ]
                                                                                                         }
                                                                                                     ]
                                                                                                 },
                                                                                                 "children": [
                                                                                                     {
-                                                                                                        "id": "standing1",
+                                                                                                        "id": "masterIdle",
                                                                                                         "type": "clip",
                                                                                                         "data": {
                                                                                                             "url": "qrc:///avatar/animations/idle.fbx",
@@ -969,17 +967,139 @@
                                                                                                         "children": []
                                                                                                     },
                                                                                                     {
-                                                                                                        "id": "standing2",
-                                                                                                        "type": "clip",
+                                                                                                        "id": "fidget",
+                                                                                                        "type": "randomSwitchStateMachine",
                                                                                                         "data": {
-                                                                                                            "url": "qrc:///avatar/animations/jump_in_air.fbx",
-                                                                                                            "startFrame": 0.0,
-                                                                                                            "endFrame": 300.0,
-                                                                                                            "timeScale": 1.0,
-                                                                                                            "loopFlag": true
+                                                                                                            "currentState": "movement",
+                                                                                                            "triggerRandomSwitch": "fidgetSwitch",
+                                                                                                            "states": [
+                                                                                                                {
+                                                                                                                    "id": "movement",
+                                                                                                                    "interpTarget": 3,
+                                                                                                                    "interpDuration": 2,
+                                                                                                                    "priority": 0.5,
+                                                                                                                    "resume": false,
+                                                                                                                    "transitions": []
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "id": "alternateIdle",
+                                                                                                                    "interpTarget": 6,
+                                                                                                                    "interpDuration": 10,
+                                                                                                                    "priority": 0.5,
+                                                                                                                    "resume": false,
+                                                                                                                    "transitions": []
+                                                                                                                }
+                                                                                                            ]
                                                                                                         },
-                                                                                                        "children": []
+                                                                                                        "children": [
+                                                                                                            {
+                                                                                                                "id": "movement",
+                                                                                                                "type": "randomSwitchStateMachine",
+                                                                                                                "data": {
+                                                                                                                    "currentState": "movement1",
+                                                                                                                    "triggerRandomSwitch": "movementSwitch",
+                                                                                                                    "states": [
+                                                                                                                        {
+                                                                                                                            "id": "movement1",
+                                                                                                                            "interpTarget": 3,
+                                                                                                                            "interpDuration": 2,
+                                                                                                                            "priority": 0.5,
+                                                                                                                            "resume": false,
+                                                                                                                            "transitions": []
+                                                                                                                        },
+                                                                                                                        {
+                                                                                                                            "id": "movement2",
+                                                                                                                            "interpTarget": 3,
+                                                                                                                            "interpDuration": 2,
+                                                                                                                            "priority": 0.5,
+                                                                                                                            "resume": false,
+                                                                                                                            "transitions": []
+                                                                                                                        }
+                                                                                                                    ]
+                                                                                                                },
+                                                                                                                "children": [
+                                                                                                                    {
+                                                                                                                        "id": "movement1",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/jump_standing_launch.fbx.fbx",
+                                                                                                                            "startFrame": 2.0,
+                                                                                                                            "endFrame": 16.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": false
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "id": "movement2",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/jump_running_launch_land.fbx",
+                                                                                                                            "startFrame": 4.0,
+                                                                                                                            "endFrame": 15.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": false
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    }
+                                                                                                                ]
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "id": "alternateIdle",
+                                                                                                                "type": "randomSwitchStateMachine",
+                                                                                                                "data": {
+                                                                                                                    "currentState": "altIdle1",
+                                                                                                                    "triggerRandomSwitch": "altIdleSwitch",
+                                                                                                                    "states": [
+                                                                                                                        {
+                                                                                                                            "id": "altIdle1",
+                                                                                                                            "interpTarget": 6,
+                                                                                                                            "interpDuration": 10,
+                                                                                                                            "priority": 0.5,
+                                                                                                                            "resume": false,
+                                                                                                                            "transitions": []
+                                                                                                                        },
+                                                                                                                        {
+                                                                                                                            "id": "altIdle2",
+                                                                                                                            "interpTarget": 6,
+                                                                                                                            "interpDuration": 10,
+                                                                                                                            "priority": 0.5,
+                                                                                                                            "resume": false,
+                                                                                                                            "transitions": []
+                                                                                                                        }
+                                                                                                                    ]
+                                                                                                                },
+                                                                                                                "children": [
+                                                                                                                    {
+                                                                                                                        "id": "altIdle1",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/fly.fbx",
+                                                                                                                            "startFrame": 1.0,
+                                                                                                                            "endFrame": 80.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": false
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "id": "altIdle2",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/fly.fbx",
+                                                                                                                            "startFrame": 1.0,
+                                                                                                                            "endFrame": 80.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": false
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    }
+                                                                                                                ]
+                                                                                                            }
+
+                                                                                                        ]
                                                                                                     }
+
                                                                                                 ]
                                                                                             },
                                                                                             {

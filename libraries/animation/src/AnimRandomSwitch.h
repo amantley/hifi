@@ -130,12 +130,11 @@ protected:
 
 	void setCurrentState(RandomSwitchState::Pointer randomState);
     void setTriggerRandomSwitchVar(const QString& triggerRandomSwitchVar) { _triggerRandomSwitchVar = triggerRandomSwitchVar; }
-    void addToPrioritySum(float priority) { _totalPriorities += priority };
+    void addToPrioritySum(float priority) { _totalPriorities += priority; }
 
 	void addState(RandomSwitchState::Pointer randomState);
 
 	void switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState, bool shouldInterp);
-    void initRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState);
 	RandomSwitchState::Pointer evaluateTransitions(const AnimVariantMap& animVars) const;
 
 	// for AnimDebugDraw rendering

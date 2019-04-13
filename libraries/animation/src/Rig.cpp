@@ -1400,8 +1400,8 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
 
         ++_framesAnimatedThisSession;
         if (_framesAnimatedThisSession%700 == 0) {
-            _animVars.set("randomIdleSwitch", true);
-            qCDebug(animation) << "triggering the random idle";
+            _animVars.set("timeToFidget", true);
+            qCDebug(animation) << "triggering the fidget";
         }
         updateAnimationStateHandlers();
         _animVars.setRigToGeometryTransform(_rigToGeometryTransform);
