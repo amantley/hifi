@@ -1001,7 +1001,7 @@
                                                                                                                     "states": [
                                                                                                                         {
                                                                                                                             "id": "movement1",
-                                                                                                                            "interpTarget": 3,
+                                                                                                                            "interpTarget": 5,
                                                                                                                             "interpDuration": 2,
                                                                                                                             "priority": 0.5,
                                                                                                                             "resume": false,
@@ -1009,7 +1009,7 @@
                                                                                                                         },
                                                                                                                         {
                                                                                                                             "id": "movement2",
-                                                                                                                            "interpTarget": 3,
+                                                                                                                            "interpTarget": 7,
                                                                                                                             "interpDuration": 2,
                                                                                                                             "priority": 0.5,
                                                                                                                             "resume": false,
@@ -1022,7 +1022,7 @@
                                                                                                                         "id": "movement1",
                                                                                                                         "type": "clip",
                                                                                                                         "data": {
-                                                                                                                            "url": "qrc:///avatar/animations/jump_standing_launch.fbx.fbx",
+                                                                                                                            "url": "qrc:///avatar/animations/jump_standing_launch.fbx",
                                                                                                                             "startFrame": 2.0,
                                                                                                                             "endFrame": 16.0,
                                                                                                                             "timeScale": 1.0,

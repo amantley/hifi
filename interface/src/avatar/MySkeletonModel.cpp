@@ -124,6 +124,11 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
     assert(myAvatar);
 
+    int triggerFrameCount = myAvatar->getRandomTriggerCount();
+    if (_rig.getRandomTriggerFrameCount() != triggerFrameCount) {
+        _rig.setRandomTriggerFrameCount(triggerFrameCount);
+    }
+
     Rig::ControllerParameters params;
 
     AnimPose avatarToRigPose(glm::vec3(1.0f), Quaternions::Y_180, glm::vec3(0.0f));

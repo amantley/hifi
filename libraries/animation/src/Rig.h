@@ -149,6 +149,9 @@ public:
 
     int getJointParentIndex(int childIndex) const;
 
+    void setRandomTriggerFrameCount(int frameCount) { _randomTriggerFrameCount = frameCount; }
+    int getRandomTriggerFrameCount() const { return _randomTriggerFrameCount; }
+
     // geometry space
     void setJointState(int index, bool valid, const glm::quat& rotation, const glm::vec3& translation, float priority);
 
@@ -426,6 +429,8 @@ protected:
     bool _headEnabled { false };
     bool _computeNetworkAnimation { false };
     bool _sendNetworkNode { false };
+
+    int _randomTriggerFrameCount { 1500 };
 
     AnimContext _lastContext;
     AnimVariantMap _lastAnimVars;

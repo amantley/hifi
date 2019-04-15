@@ -674,6 +674,8 @@ public:
      * @returns {number} The height of the avatar.
      */
     Q_INVOKABLE virtual float getHeight() const;
+    Q_INVOKABLE virtual void setRandomTriggerCount(int frameCount) { _randomTriggerFrameCount = frameCount; }
+    Q_INVOKABLE virtual int getRandomTriggerCount() const { return _randomTriggerFrameCount; }
 
     float getUnscaledHeight() const;
 
@@ -1744,6 +1746,7 @@ protected:
     bool _isClientAvatar { false };
     bool _collideWithOtherAvatars { true };
     bool _hasPriority{ false };
+    int _randomTriggerFrameCount { 1500 };
 
     // null unless MyAvatar or ScriptableAvatar sending traits data to mixer
     std::unique_ptr<ClientTraitsHandler, LaterDeleter> _clientTraitsHandler;

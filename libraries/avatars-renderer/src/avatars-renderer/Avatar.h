@@ -507,6 +507,7 @@ public:
      */
     Q_INVOKABLE float getSimulationRate(const QString& rateName = QString("")) const;
 
+
     bool hasNewJointData() const { return _hasNewJointData; }
 
     float getBoundingRadius() const;
