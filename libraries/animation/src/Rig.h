@@ -431,6 +431,7 @@ protected:
     bool _sendNetworkNode { false };
 
     int _randomTriggerFrameCount { 1500 };
+    int _numFramesInIdle { 300 };
 
     AnimContext _lastContext;
     AnimVariantMap _lastAnimVars;

@@ -1399,8 +1399,13 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
         DETAILED_PERFORMANCE_TIMER("handleTriggers");
 
         ++_framesAnimatedThisSession;
+        --_numFramesInIdle;
+        if (_numFramesInIdle < 0) {
+            _animVars.set("finishAltIdle", true);
+        }
         if (_framesAnimatedThisSession%getRandomTriggerFrameCount() == 0) {
             _animVars.set("timeToFidget", true);
+            _numFramesInIdle = randIntInRange(100, 300);
             qCDebug(animation) << "triggering the fidget";
         }
         updateAnimationStateHandlers();

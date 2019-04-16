@@ -24,7 +24,6 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
     float parentDebugAlpha = context.getDebugAlpha(_id);
 
-    //qCDebug(animation) << "frames active " << _framesActive << " frames in session " << context.getFramesAnimatedThisSession();
     AnimRandomSwitch::RandomSwitchState::Pointer desiredState;
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1 || animVars.lookup(_triggerRandomSwitchVar, false)) {
         // get a random number and decide which motion to choose.
@@ -40,12 +39,11 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
                 lowerBound = upperBound;
             }
         }
-        //if (desiredState->getID() != _currentState->getID()) {
+        if (desiredState->getID() == _currentState->getID()) {
             _duringInterp = false;
-        //}
-        //if (desiredState->getID() != _currentState->getID()) {
-            switchRandomState(animVars, context, desiredState, _duringInterp);
-        //}
+        }
+        switchRandomState(animVars, context, desiredState, _duringInterp);
+
     } else {
 
         // here we are checking to see if we want a temporary movement
@@ -118,7 +116,6 @@ void AnimRandomSwitch::addState(RandomSwitchState::Pointer randomState) {
 void AnimRandomSwitch::switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState, bool shouldInterp) {
     
     auto nextStateNode = _children[desiredState->getChildIndex()];
-    nextStateNode->setCurrentFrame(desiredState->_interpTarget);
     if (shouldInterp) {
     
         const float FRAMES_PER_SECOND = 30.0f;
@@ -152,9 +149,9 @@ void AnimRandomSwitch::switchRandomState(const AnimVariantMap& animVars, const A
             assert(false);
         }
     } else {
-        //if (desiredState->getResume()) {
-          //  nextStateNode->setCurrentFrame(desiredState->_interpTarget);
-        //}
+        if (!desiredState->getResume()) {
+            nextStateNode->setCurrentFrame(desiredState->_interpTarget);
+        }
     }
 
 #ifdef WANT_DEBUG

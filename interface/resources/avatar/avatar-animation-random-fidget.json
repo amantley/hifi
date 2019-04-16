@@ -947,7 +947,7 @@
                                                                                                             "transitions": [
                                                                                                                 { "var": "movement1OnDone", "state": "masterIdle" },
                                                                                                                 { "var": "movement2OnDone", "state": "masterIdle" },
-                                                                                                                { "var": "altIdle1OnDone", "state": "masterIdle" },
+                                                                                                                { "var": "lffToMasterIdleOnDone", "state": "masterIdle" },
                                                                                                                 { "var": "altIdle2OnDone", "state": "masterIdle" }
                                                                                                             ]
                                                                                                         }
@@ -1057,6 +1057,26 @@
                                                                                                                             "interpDuration": 10,
                                                                                                                             "priority": 0.5,
                                                                                                                             "resume": false,
+                                                                                                                            "transitions": [
+                                                                                                                                { "var": "altIdle1OnDone", "state": "lff" }
+                                                                                                                            ]
+                                                                                                                        },
+                                                                                                                        {
+                                                                                                                            "id": "lff",
+                                                                                                                            "interpTarget": 6,
+                                                                                                                            "interpDuration": 10,
+                                                                                                                            "priority": -1.0,
+                                                                                                                            "resume": false,
+                                                                                                                            "transitions": [
+                                                                                                                                { "var": "finishAltIdle", "state": "lffToMasterIdle" }
+                                                                                                                            ]
+                                                                                                                        },
+                                                                                                                        {
+                                                                                                                            "id": "lffToMasterIdle",
+                                                                                                                            "interpTarget": 6,
+                                                                                                                            "interpDuration": 10,
+                                                                                                                            "priority": -1.0,
+                                                                                                                            "resume": false,
                                                                                                                             "transitions": []
                                                                                                                         },
                                                                                                                         {
@@ -1074,11 +1094,35 @@
                                                                                                                         "id": "altIdle1",
                                                                                                                         "type": "clip",
                                                                                                                         "data": {
-                                                                                                                            "url": "qrc:///avatar/animations/fly.fbx",
+                                                                                                                            "url": "qrc:///avatar/animations/idle_neutral_to_LFF.fbx",
                                                                                                                             "startFrame": 1.0,
                                                                                                                             "endFrame": 80.0,
                                                                                                                             "timeScale": 1.0,
                                                                                                                             "loopFlag": false
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "id": "lff",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/idle_LFF.fbx",
+                                                                                                                            "startFrame": 1.0,
+                                                                                                                            "endFrame": 80.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": true
+                                                                                                                        },
+                                                                                                                        "children": []
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "id": "lffToMasterIdle",
+                                                                                                                        "type": "clip",
+                                                                                                                        "data": {
+                                                                                                                            "url": "qrc:///avatar/animations/idle_LFF_to_neutral.fbx",
+                                                                                                                            "startFrame": 1.0,
+                                                                                                                            "endFrame": 80.0,
+                                                                                                                            "timeScale": 1.0,
+                                                                                                                            "loopFlag": true
                                                                                                                         },
                                                                                                                         "children": []
                                                                                                                     },
