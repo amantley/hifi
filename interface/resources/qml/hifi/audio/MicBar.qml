@@ -16,13 +16,16 @@ import stylesUit 1.0
 import TabletScriptingInterface 1.0
 
 Rectangle {
+    id: micBar
     HifiConstants { id: hifi; }
 
     property var muted: AudioScriptingInterface.muted;
     readonly property var level: AudioScriptingInterface.inputLevel;
+    readonly property var clipping: AudioScriptingInterface.clipping;
     property var pushToTalk: AudioScriptingInterface.pushToTalk;
     property var pushingToTalk: AudioScriptingInterface.pushingToTalk;
 
+    readonly property var userSpeakingLevel: 0.4;
     property bool gated: false;
     Component.onCompleted: {
         AudioScriptingInterface.noiseGateOpened.connect(function() { gated = false; });
@@ -40,7 +43,6 @@ Rectangle {
         AudioScriptingInterface.pushingToTalkChanged.connect(function() {
             pushingToTalk = AudioScriptingInterface.pushingToTalk;
         });
-
     }
 
     property bool standalone: false;
@@ -87,7 +89,7 @@ Rectangle {
             if (pushToTalk) {
                 return;
             }
-            muted = !muted;
+            AudioScriptingInterface.muted = !muted;
             Tablet.playSound(TabletEnums.ButtonClick);
         }
         drag.target: dragTarget;
@@ -130,9 +132,12 @@ Rectangle {
                 readonly property string unmutedIcon: "../../../icons/tablet-icons/mic-unmute-i.svg";
                 readonly property string mutedIcon: "../../../icons/tablet-icons/mic-mute-i.svg";
                 readonly property string pushToTalkIcon: "../../../icons/tablet-icons/mic-ptt-i.svg";
+                readonly property string clippingIcon: "../../../icons/tablet-icons/mic-clip-i.svg";
+                readonly property string gatedIcon: "../../../icons/tablet-icons/mic-gate-i.svg";
 
                 id: image;
-                source: (pushToTalk && !pushingToTalk) ? pushToTalkIcon : muted ? mutedIcon : unmutedIcon;
+                source: (pushToTalk && !pushingToTalk) ? pushToTalkIcon : muted ? mutedIcon :
+                    clipping ? clippingIcon : gated ? gatedIcon : unmutedIcon;
 
                 width: 30;
                 height: 30;

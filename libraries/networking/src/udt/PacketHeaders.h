@@ -134,6 +134,7 @@ public:
         BulkAvatarTraits,
         AudioSoloRequest,
         BulkAvatarTraitsAck,
+        StopInjector,
         NUM_PACKET_TYPE
     };
 
@@ -267,6 +268,7 @@ enum class EntityVersion : PacketVersion {
     ReOrderParentIDProperties,
     CertificateTypeProperty,
     DisableWebMedia,
+    ParticleShapeType,
 
     // Add new versions above here
     NUM_PACKET_TYPE,
@@ -328,7 +330,8 @@ enum class AvatarMixerPacketVersion : PacketVersion {
     CollisionFlag,
     AvatarTraitsAck,
     FasterAvatarEntities,
-    SendMaxTranslationDimension
+    SendMaxTranslationDimension,
+    FBXJointOrderChange
 };
 
 enum class DomainConnectRequestVersion : PacketVersion {
@@ -367,6 +370,7 @@ enum class AudioVersion : PacketVersion {
     SpaceBubbleChanges,
     HasPersonalMute,
     HighDynamicRangeVolume,
+    StopInjectors
 };
 
 enum class MessageDataVersion : PacketVersion {
