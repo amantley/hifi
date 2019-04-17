@@ -1400,13 +1400,14 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
 
         ++_framesAnimatedThisSession;
         --_numFramesInIdle;
-        if (_numFramesInIdle < 0) {
-            _animVars.set("finishAltIdle", true);
-        }
-        if (_framesAnimatedThisSession%getRandomTriggerFrameCount() == 0) {
+        
+        if ((_framesAnimatedThisSession%getRandomTriggerFrameCount() == 0) && (_numFramesInIdle < 0)) {
             _animVars.set("timeToFidget", true);
             _numFramesInIdle = randIntInRange(100, 300);
             qCDebug(animation) << "triggering the fidget";
+        }
+        if (_numFramesInIdle < 0) {
+            _animVars.set("finishAltIdle", true);
         }
         updateAnimationStateHandlers();
         _animVars.setRigToGeometryTransform(_rigToGeometryTransform);

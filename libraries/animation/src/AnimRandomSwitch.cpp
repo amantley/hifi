@@ -24,19 +24,22 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
     float parentDebugAlpha = context.getDebugAlpha(_id);
 
-    AnimRandomSwitch::RandomSwitchState::Pointer desiredState;
+    AnimRandomSwitch::RandomSwitchState::Pointer desiredState = _currentState;
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1 || animVars.lookup(_triggerRandomSwitchVar, false)) {
         // get a random number and decide which motion to choose.
         float dice = randFloatInRange(0.0f, 1.0f);
+        qCDebug(animation) << "dice rolls " << dice;
         float lowerBound = 0.0f;
         for (const RandomSwitchState::Pointer& randState : _randomStates) {
-            float upperBound = lowerBound + (randState->getPriority()/_totalPriorities);
-            if ((dice > lowerBound) && (dice < upperBound)) {
-                desiredState = randState;
-                qCDebug(animation) << "chose " << randState->getID();
-                break;
-            } else {
-                lowerBound = upperBound;
+            if (randState->getPriority() > 0.0f) {
+                float upperBound = lowerBound + (randState->getPriority() / _totalPriorities);
+                if ((dice > lowerBound) && (dice < upperBound)) {
+                    desiredState = randState;
+                    qCDebug(animation) << "chose " << randState->getID();
+                    break;
+                } else {
+                    lowerBound = upperBound;
+                }
             }
         }
         if (desiredState->getID() == _currentState->getID()) {
