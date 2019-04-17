@@ -149,8 +149,12 @@ public:
 
     int getJointParentIndex(int childIndex) const;
 
-    void setRandomTriggerFrameCount(int frameCount) { _randomTriggerFrameCount = frameCount; }
-    int getRandomTriggerFrameCount() const { return _randomTriggerFrameCount; }
+    void setRandomTimeToTrigger(float timeToTrigger) { _randomTimeToTrigger = timeToTrigger; }
+    float getRandomTimeToTrigger() const { return _randomTimeToTrigger; }
+    void setRandomTriggerMinTime(float timeToTrigger) { _randomTriggerMinTime = timeToTrigger; }
+    float getRandomTriggerMinTime() const { return _randomTriggerMinTime; }
+    void setRandomTriggerMaxTime(float timeToTrigger) { _randomTriggerMaxTime = timeToTrigger; }
+    float getRandomTriggerMaxTime() const { return _randomTriggerMaxTime; }
 
     // geometry space
     void setJointState(int index, bool valid, const glm::quat& rotation, const glm::vec3& translation, float priority);
@@ -430,8 +434,10 @@ protected:
     bool _computeNetworkAnimation { false };
     bool _sendNetworkNode { false };
 
-    int _randomTriggerFrameCount { 1500 };
-    int _numFramesInIdle { 300 };
+    float _randomTimeToTrigger { 20.0f };
+    float _randomTriggerMinTime { 50.0f };
+    float _randomTriggerMaxTime { 500.0f };
+    float _idleTimeElapsed { 0.0f };
 
     AnimContext _lastContext;
     AnimVariantMap _lastAnimVars;

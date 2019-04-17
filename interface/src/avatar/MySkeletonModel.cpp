@@ -124,9 +124,11 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
     assert(myAvatar);
 
-    int triggerFrameCount = myAvatar->getRandomTriggerCount();
-    if (_rig.getRandomTriggerFrameCount() != triggerFrameCount) {
-        _rig.setRandomTriggerFrameCount(triggerFrameCount);
+    float triggerMin = myAvatar->getRandomTriggerTimeMin();
+    float triggerMax = myAvatar->getRandomTriggerTimeMax();
+    if (fabsf(_rig.getRandomTriggerMinTime() - triggerMin) > EPSILON || fabsf(_rig.getRandomTriggerMaxTime() - triggerMax) > EPSILON) {
+        _rig.setRandomTriggerMinTime(triggerMin);
+        _rig.setRandomTriggerMaxTime(triggerMax);
     }
 
     Rig::ControllerParameters params;

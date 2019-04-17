@@ -1399,16 +1399,18 @@ void Rig::updateAnimations(float deltaTime, const glm::mat4& rootTransform, cons
         DETAILED_PERFORMANCE_TIMER("handleTriggers");
 
         ++_framesAnimatedThisSession;
-        --_numFramesInIdle;
+        _idleTimeElapsed += deltaTime;
         
-        if ((_framesAnimatedThisSession%getRandomTriggerFrameCount() == 0) && (_numFramesInIdle < 0)) {
+        if (_idleTimeElapsed > getRandomTimeToTrigger()) {
+            _idleTimeElapsed = 0.0f;
             _animVars.set("timeToFidget", true);
-            _numFramesInIdle = randIntInRange(100, 300);
-            qCDebug(animation) << "triggering the fidget";
-        }
-        if (_numFramesInIdle < 0) {
             _animVars.set("finishAltIdle", true);
+            float triggerTime = randFloatInRange(getRandomTriggerMinTime(), getRandomTriggerMaxTime());
+            qCDebug(animation) << "trigger time next " << triggerTime;
+            setRandomTimeToTrigger(triggerTime);
+            qCDebug(animation) << "triggering the fidget or ending the alt idle";
         }
+
         updateAnimationStateHandlers();
         _animVars.setRigToGeometryTransform(_rigToGeometryTransform);
         if (_networkNode) {
