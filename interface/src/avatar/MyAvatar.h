@@ -308,8 +308,6 @@ class MyAvatar : public Avatar {
      * @borrows Avatar.getTargetScale as getTargetScale
      * @borrows Avatar.resetLastSent as resetLastSent
      * @borrows Avatar.hasPriority as hasPriority
-     * @borrows Avatar.setRandomTriggerTimeMinMax as setRandomTriggerTimeMinMax
-     * @borrows Avatar.getRandomTriggerTimeMinMax as getRandomTriggerTimeMinMax
      */
     // FIXME: `glm::vec3 position` is not accessible from QML, so this exposes position in a QML-native type
     Q_PROPERTY(QVector3D qmlPosition READ getQmlPosition)

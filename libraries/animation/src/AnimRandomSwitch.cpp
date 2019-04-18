@@ -24,13 +24,11 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
     float parentDebugAlpha = context.getDebugAlpha(_id);
     
-    
-    
     AnimRandomSwitch::RandomSwitchState::Pointer desiredState = _currentState;
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1 || animVars.lookup(_triggerRandomSwitchVar, false)) {
         // get a random number and decide which motion to choose.
         float dice = randFloatInRange(0.0f, 1.0f);
-        qCDebug(animation) << "dice rolls " << dice;
+        qCDebug(animation) << "dice rolls " << dice << " " <<  _framesActive << " " << context.getFramesAnimatedThisSession();
         float lowerBound = 0.0f;
         for (const RandomSwitchState::Pointer& randState : _randomStates) {
             if (randState->getPriority() > 0.0f) {
@@ -49,6 +47,7 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
         }
         switchRandomState(animVars, context, desiredState, _duringInterp);
         _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
+        qCDebug(animation) << "set the trigger time init " << _triggerTime << " " << _transitionVar;
 
     } else {
 
@@ -59,14 +58,15 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
             bool shouldInterp = true;
             switchRandomState(animVars, context, desiredState, shouldInterp);
             _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
+            qCDebug(animation) << "transitioning to " << desiredState->getID();
         }
     }
 
     _triggerTime -= dt;
     if (_triggerTime < 0.0f) {
         _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
-        triggersOut.set(_transitionVar, true);
-        qCDebug(animation) << "set the trigger time " << _triggerTime;
+        triggersOut.setTrigger(_transitionVar);
+        qCDebug(animation) << "set the trigger time " << _triggerTime << " " << _transitionVar;
     }
 
     assert(_currentState);
@@ -74,7 +74,7 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
     assert(currentStateNode);
 
     if (_duringInterp) {
-        qCDebug(animation) << "interping ";
+        qCDebug(animation) << "interping " << _transitionVar;
         _alpha += _alphaVel * dt;
         if (_alpha < 1.0f) {
             AnimPoseVec* nextPoses = nullptr;
@@ -98,6 +98,7 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
             }
             context.setDebugAlpha(_currentState->getID(), _alpha * parentDebugAlpha, _children[_currentState->getChildIndex()]->getType());
         } else {
+            AnimPoseVec checkNodes = currentStateNode->evaluate(animVars, context, dt, triggersOut);
             _duringInterp = false;
             _prevPoses.clear();
             _nextPoses.clear();

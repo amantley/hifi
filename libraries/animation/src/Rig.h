@@ -149,13 +149,6 @@ public:
 
     int getJointParentIndex(int childIndex) const;
 
-    void setRandomTimeToTrigger(float timeToTrigger) { _randomTimeToTrigger = timeToTrigger; }
-    float getRandomTimeToTrigger() const { return _randomTimeToTrigger; }
-    void setRandomTriggerMinTime(float timeToTrigger) { _randomTriggerMinTime = timeToTrigger; }
-    float getRandomTriggerMinTime() const { return _randomTriggerMinTime; }
-    void setRandomTriggerMaxTime(float timeToTrigger) { _randomTriggerMaxTime = timeToTrigger; }
-    float getRandomTriggerMaxTime() const { return _randomTriggerMaxTime; }
-
     // geometry space
     void setJointState(int index, bool valid, const glm::quat& rotation, const glm::vec3& translation, float priority);
 

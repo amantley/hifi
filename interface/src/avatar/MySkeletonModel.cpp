@@ -124,13 +124,6 @@ void MySkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
     assert(myAvatar);
 
-    float triggerMin = myAvatar->getRandomTriggerTimeMin();
-    float triggerMax = myAvatar->getRandomTriggerTimeMax();
-    if (fabsf(_rig.getRandomTriggerMinTime() - triggerMin) > EPSILON || fabsf(_rig.getRandomTriggerMaxTime() - triggerMax) > EPSILON) {
-        _rig.setRandomTriggerMinTime(triggerMin);
-        _rig.setRandomTriggerMaxTime(triggerMax);
-    }
-
     Rig::ControllerParameters params;
 
     AnimPose avatarToRigPose(glm::vec3(1.0f), Quaternions::Y_180, glm::vec3(0.0f));
