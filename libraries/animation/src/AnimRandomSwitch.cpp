@@ -23,7 +23,9 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
     float parentDebugAlpha = context.getDebugAlpha(_id);
-
+    
+    
+    
     AnimRandomSwitch::RandomSwitchState::Pointer desiredState = _currentState;
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1 || animVars.lookup(_triggerRandomSwitchVar, false)) {
         // get a random number and decide which motion to choose.
@@ -46,6 +48,7 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
             _duringInterp = false;
         }
         switchRandomState(animVars, context, desiredState, _duringInterp);
+        _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
 
     } else {
 
@@ -55,7 +58,15 @@ const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, co
         if (desiredState != _currentState) {
             bool shouldInterp = true;
             switchRandomState(animVars, context, desiredState, shouldInterp);
+            _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
         }
+    }
+
+    _triggerTime -= dt;
+    if (_triggerTime < 0.0f) {
+        _triggerTime = randFloatInRange(_triggerTimeMin, _triggerTimeMax);
+        triggersOut.set(_transitionVar, true);
+        qCDebug(animation) << "set the trigger time " << _triggerTime;
     }
 
     assert(_currentState);

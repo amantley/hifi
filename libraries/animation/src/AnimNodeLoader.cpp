@@ -807,6 +807,10 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
 
     READ_STRING(currentState, jsonObj, nodeId, jsonUrl, false);
     READ_STRING(triggerRandomSwitch, jsonObj, nodeId, jsonUrl, false);
+    READ_OPTIONAL_FLOAT(triggerTimeMin, jsonObj, 1.0f);
+    READ_OPTIONAL_FLOAT(triggerTimeMax, jsonObj, 1.0f);
+    READ_OPTIONAL_STRING(transitionVar, jsonObj);
+
 
     auto statesValue = jsonObj.value("states");
     if (!statesValue.isArray()) {
@@ -919,6 +923,9 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
     }
     smNode->setCurrentState(iter->second);
     smNode->setTriggerRandomSwitchVar(triggerRandomSwitch);
+    smNode->setTriggerTimeMin(triggerTimeMin);
+    smNode->setTriggerTimeMax(triggerTimeMax);
+    smNode->setTransitionVar(transitionVar);
 
     return true;
 }
