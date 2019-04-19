@@ -15,23 +15,26 @@
 #include <vector>
 #include "AnimNode.h"
 
-// State Machine for random transitioning between children AnimNodes
+// Random Switch State Machine for random transitioning between children AnimNodes
 //
-// This is mechinisim for playing animations and smoothly interpolating/fading
-// between them.  A StateMachine has a set of States, which typically reference
-// child AnimNodes.  Each State has a list of Transitions, which are evaluated
+// This is mechanisim for choosing and playing a random animation and smoothly interpolating/fading
+// between them.  A RandomSwitch has a set of States, which typically reference
+// child AnimNodes.  Each Random Switch State has a list of Transitions, which are evaluated
 // to determine when we should switch to a new State.  Parameters for the smooth
-// interpolation/fading are read from the State that you are transitioning to.
+// interpolation/fading are read from the Random Switch State that you are transitioning to.
 //
 // The currentState can be set directly via the setCurrentStateVar() and will override
 // any State transitions.
 //
-// Each State has two parameters that can be changed via AnimVars,
+// Each Random Switch State has two parameters that can be changed via AnimVars,
 // * interpTarget - (frames) The destination frame of the interpolation. i.e. the first frame of the animation that will
 //   visible after interpolation is complete.
 // * interpDuration - (frames) The total length of time it will take to interp between the current pose and the
 //   interpTarget frame.
 // * interpType - How the interpolation is performed.
+// * priority - this number represents how likely this Random Switch State will be chosen.  
+//   the priority for each Random Switch State will be normalized, so their relative size is what is important
+// * resume - if resume is false then if this state is chosen twice in a row it will remember what frame it was playing on.
 //   * SnapshotBoth: Stores two snapshots, the previous animation before interpolation begins and the target state at the
 //     interTarget frame.  Then during the interpolation period the two snapshots are interpolated to produce smooth motion between them.
 //   * SnapshotPrev: Stores a snapshot of the previous animation before interpolation begins.  However the target state is

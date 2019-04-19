@@ -23,7 +23,7 @@ AnimRandomSwitch::~AnimRandomSwitch() {
 
 const AnimPoseVec& AnimRandomSwitch::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, AnimVariantMap& triggersOut) {
     float parentDebugAlpha = context.getDebugAlpha(_id);
-    
+
     AnimRandomSwitch::RandomSwitchState::Pointer desiredState = _currentState;
     if (abs(_framesActive - context.getFramesAnimatedThisSession()) > 1 || animVars.lookup(_triggerRandomSwitchVar, false)) {
         // get a random number and decide which motion to choose.
@@ -129,14 +129,13 @@ void AnimRandomSwitch::addState(RandomSwitchState::Pointer randomState) {
 }
 
 void AnimRandomSwitch::switchRandomState(const AnimVariantMap& animVars, const AnimContext& context, RandomSwitchState::Pointer desiredState, bool shouldInterp) {
-    
+
     auto nextStateNode = _children[desiredState->getChildIndex()];
     if (shouldInterp) {
-    
+
         const float FRAMES_PER_SECOND = 30.0f;
 
         auto prevStateNode = _children[_currentState->getChildIndex()];
-        
 
         _duringInterp = true;
         _alpha = 0.0f;

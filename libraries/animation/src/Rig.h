@@ -454,11 +454,6 @@ protected:
     bool _computeNetworkAnimation { false };
     bool _sendNetworkNode { false };
 
-    float _randomTimeToTrigger { 20.0f };
-    float _randomTriggerMinTime { 50.0f };
-    float _randomTriggerMaxTime { 500.0f };
-    float _idleTimeElapsed { 0.0f };
-
     AnimContext _lastContext;
     AnimVariantMap _lastAnimVars;
 

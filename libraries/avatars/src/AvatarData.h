@@ -1745,7 +1745,7 @@ protected:
     bool _isNewAvatar { true };
     bool _isClientAvatar { false };
     bool _collideWithOtherAvatars { true };
-    bool _hasPriority { false };
+    bool _hasPriority{ false };
 
     // null unless MyAvatar or ScriptableAvatar sending traits data to mixer
     std::unique_ptr<ClientTraitsHandler, LaterDeleter> _clientTraitsHandler;

@@ -96,7 +96,7 @@ static AnimStateMachine::InterpType stringToInterpType(const QString& str) {
     }
 }
 
-static AnimRandomSwitch::InterpType stringToInterpType2(const QString& str) {
+static AnimRandomSwitch::InterpType stringToRandomInterpType(const QString& str) {
     if (str == "snapshotBoth") {
         return AnimRandomSwitch::InterpType::SnapshotBoth;
     } else if (str == "snapshotPrev") {
@@ -857,7 +857,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
 
         AnimRandomSwitch::InterpType interpTypeEnum = AnimRandomSwitch::InterpType::SnapshotPrev;  // default value
         if (!interpType.isEmpty()) {
-            interpTypeEnum = stringToInterpType2(interpType);
+            interpTypeEnum = stringToRandomInterpType(interpType);
             if (interpTypeEnum == AnimRandomSwitch::InterpType::NumTypes) {
                 qCCritical(animation) << "AnimNodeLoader, bad interpType on random state Machine state, nodeId = " << nodeId << "random stateId =" << id;
                 return false;
@@ -892,13 +892,12 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
         auto transitionsArray = transitionsValue.toArray();
         for (const auto& transitionValue : transitionsArray) {
             if (!transitionValue.isObject()) {
-                qCritical(animation) << "AnimNodeLoader, bad transition object in \"transtions\", random stateId =" << id << "nodeId =" << nodeId;
+                qCritical(animation) << "AnimNodeLoader, bad transition object in \"transitions\", random stateId =" << id << "nodeId =" << nodeId;
                 return false;
             }
             auto transitionObj = transitionValue.toObject();
 
             READ_STRING(var, transitionObj, nodeId, jsonUrl, false);
-            qCDebug(animation) << "var name " << var;
             READ_STRING(randomSwitchState, transitionObj, nodeId, jsonUrl, false);
 
             transitionMap.insert(TransitionMap::value_type(randomStatePtr, StringPair(var, randomSwitchState)));
@@ -912,7 +911,7 @@ bool processRandomSwitchStateMachineNode(AnimNode::Pointer node, const QJsonObje
         if (iter != randomStateMap.end()) {
             srcState->addTransition(AnimRandomSwitch::RandomSwitchState::Transition(transition.second.first, iter->second));
         } else {
-            qCCritical(animation) << "AnimNodeLoader, bad random state machine transtion from srcState =" << srcState->_id << "dstState =" << transition.second.second << "nodeId =" << nodeId;
+            qCCritical(animation) << "AnimNodeLoader, bad random state machine transition from srcState =" << srcState->_id << "dstState =" << transition.second.second << "nodeId =" << nodeId;
             return false;
         }
     }
