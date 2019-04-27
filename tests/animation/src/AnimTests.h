@@ -21,6 +21,7 @@ private slots:
     void initTestCase();
     void cleanupTestCase();
     void testClipInternalState();
+    void testRandomSwitchEvaulate();
     void testClipEvaulate();
     void testClipEvaulateWithVars();
     void testLoader();

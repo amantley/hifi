@@ -10,6 +10,7 @@
 #include "AnimTests.h"
 #include <AnimNodeLoader.h>
 #include <AnimClip.h>
+#include <AnimRandomSwitch.h>
 #include <AnimBlendLinear.h>
 #include <AnimationLogging.h>
 #include <AnimVariant.h>
@@ -69,6 +70,81 @@ void AnimTests::testClipInternalState() {
 static float framesToSec(float secs) {
     const float FRAMES_PER_SECOND = 30.0f;
     return secs / FRAMES_PER_SECOND;
+}
+
+void AnimTests::testRandomSwitchEvaulate() {
+
+    QString jsonUrl = "http://hifi-content.s3.amazonaws.com/angus/longidle/animTest.json";
+    AnimNodeLoader loader(jsonUrl);
+
+    const int timeout = 1000;
+    QEventLoop loop;
+
+    AnimNode::Pointer node = nullptr;
+    connect(&loader, &AnimNodeLoader::success, [&](AnimNode::Pointer nodeIn) { node = nodeIn; });
+
+    loop.connect(&loader, SIGNAL(success(AnimNode::Pointer)), SLOT(quit()));
+    loop.connect(&loader, SIGNAL(error(int, QString)), SLOT(quit()));
+    QTimer::singleShot(timeout, &loop, SLOT(quit()));
+
+    loop.exec();
+
+    QVERIFY((bool)node);
+
+    QVERIFY(node->getID() == "idleTalk");
+    QVERIFY(node->getType() == AnimNode::Type::RandomSwitchStateMachine);
+
+    auto randSwitchMachine = std::static_pointer_cast<AnimRandomSwitch>(node);
+    //QVERIFY(randSwitchMachine->g == 0.5f);
+
+    QVERIFY(node->getChildCount() == 3);
+
+    std::shared_ptr<AnimNode> nodes[3] = { node->getChild(0), node->getChild(1), node->getChild(2) };
+
+    QVERIFY(nodes[0]->getID() == "idleTalk1");
+    QVERIFY(nodes[0]->getChildCount() == 0);
+    QVERIFY(nodes[1]->getID() == "idleTalk2");
+    QVERIFY(nodes[1]->getChildCount() == 0);
+    QVERIFY(nodes[2]->getID() == "idleTalk3");
+    QVERIFY(nodes[2]->getChildCount() == 0);
+
+    AnimVariantMap vars = AnimVariantMap();
+    AnimVariantMap triggers;
+    triggers.clearMap();
+    AnimContext context(false, false, false, glm::mat4(), glm::mat4(), 1024);
+    randSwitchMachine->evaluate(vars, context, 20.0f, triggers);
+    QVERIFY(triggers.hasKey("idleTalkSwitch"));
+    QVERIFY(triggers.hasKey("nonsense"));
+    
+    /*
+    AnimContext context(false, false, false, glm::mat4(), glm::mat4(), 1024);
+    QString id1 = "animRandomClipNode1";
+    QString id2 = "animRandomClipNode2";
+    QString url = "https://hifi-public.s3.amazonaws.com/ozan/support/FightClubBotTest1/Animations/standard_idle.fbx";
+    float startFrame = 2.0f;
+    float endFrame = 22.0f;
+    float timeScale = 1.0f;
+    bool loopFlag = true;
+    bool mirrorFlag = false;
+
+    AnimVariantMap vars = AnimVariantMap();
+    AnimVariantMap triggers;
+    AnimClip animClip1(id1, url, startFrame, endFrame, timeScale, loopFlag, mirrorFlag);
+    AnimClip animClip2(id2, url, startFrame, endFrame, timeScale, loopFlag, mirrorFlag);
+    float interpTarget = 6.0f;
+    float interpDuration = 2.0f;
+    float priority = 0.5f;
+    bool resume = false;
+    AnimRandomSwitch::InterpType interpTypeEnum = AnimRandomSwitch::InterpType::SnapshotPrev;
+
+    auto randStatePtr = std::make_shared<AnimRandomSwitch::RandomSwitchState>(id1, 0, interpTarget, interpDuration, interpTypeEnum, priority, resume);
+    */
+
+
+    //AnimRandomSwitch randomSwitch();
+    // test for random switch 
+    bool test = false;
+    QVERIFY(test == false);
 }
 
 void AnimTests::testClipEvaulate() {
