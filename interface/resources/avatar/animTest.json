@@ -1,0 +1,77 @@
+{
+    "version": "1.0",
+    "root": {
+        "id": "idleTalk",
+        "type": "randomSwitchStateMachine",
+        "data": {
+            "currentState": "idleTalk1",
+            "triggerRandomSwitch": "idleTalkSwitch",
+            "randomSwitchTimeMin": 5.0,
+            "randomSwitchTimeMax": 10.0,
+            "states": [
+                {
+                    "id": "idleTalk1",
+                    "interpTarget": 6,
+                    "interpDuration": 15,
+                    "priority": 0.33,
+                    "resume": true,
+                    "transitions": []
+                },
+                {
+                    "id": "idleTalk2",
+                    "interpTarget": 6,
+                    "interpDuration": 15,
+                    "priority": 0.33,
+                    "resume": true,
+                    "transitions": []
+                },
+                {
+                    "id": "idleTalk3",
+                    "interpTarget": 6,
+                    "interpDuration": 15,
+                    "priority": 0.33,
+                    "resume": true,
+                    "transitions": []
+                }
+            ]
+        },
+        "children": [
+            {
+                "id": "idleTalk1",
+                "type": "clip",
+                "data": {
+                    "url": "qrc:///avatar/animations/talk.fbx",
+                    "startFrame": 1.0,
+                    "endFrame": 800.0,
+                    "timeScale": 1.0,
+                    "loopFlag": true
+                },
+                "children": []
+            },
+            {
+                "id": "idleTalk2",
+                "type": "clip",
+                "data": {
+                    "url": "qrc:///avatar/animations/talk_righthand.fbx",
+                    "startFrame": 1.0,
+                    "endFrame": 501.0,
+                    "timeScale": 1.0,
+                    "loopFlag": true
+                },
+                "children": []
+            },
+            {
+                "id": "idleTalk3",
+                "type": "clip",
+                "data": {
+                    "url": "qrc:///avatar/animations/talk04.fbx",
+                    "startFrame": 1.0,
+                    "endFrame": 499.0,
+                    "timeScale": 1.0,
+                    "loopFlag": true
+                },
+                "children": []
+            }
+        ]
+    }
+}

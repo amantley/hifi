@@ -107,14 +107,20 @@ void AnimTests::testRandomSwitchEvaulate() {
     QVERIFY(nodes[1]->getChildCount() == 0);
     QVERIFY(nodes[2]->getID() == "idleTalk3");
     QVERIFY(nodes[2]->getChildCount() == 0);
+    //AnimRandomSwitch::RandomSwitchState::Pointer fred = randSwitchMachine->evaluateTransitions();
 
     AnimVariantMap vars = AnimVariantMap();
     AnimVariantMap triggers;
+    AnimRandomSwitch::RandomSwitchState::Pointer fred = randSwitchMachine->evaluateTransitions(vars);
     triggers.clearMap();
     AnimContext context(false, false, false, glm::mat4(), glm::mat4(), 1024);
     randSwitchMachine->evaluate(vars, context, 20.0f, triggers);
     QVERIFY(triggers.hasKey("idleTalkSwitch"));
-    QVERIFY(triggers.hasKey("nonsense"));
+    triggers.clearMap();
+    vars.clearMap();
+    //randSwitchMachine->evaluate(vars, context, 20.0f, triggers);
+    //QVERIFY(triggers.hasKey("idleTalkSwitch"));
+    //QVERIFY(triggers.hasKey("nonsense"));
     
     /*
     AnimContext context(false, false, false, glm::mat4(), glm::mat4(), 1024);
